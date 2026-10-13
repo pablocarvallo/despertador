@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Reposo">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Reloj Reposo</title>
+<style>
+/* Reloj de cabecera estilo "En reposo": horizontal = reloj; vertical = ajustes.
+   Diseño oscuro único (fondo negro). Celeste con luz, rojo en oscuridad. */
+@font-face{font-family:"Antonio";font-style:normal;font-weight:200;font-display:block;src:url(fonts/antonio-latin-200-normal.woff2) format("woff2")}
+@font-face{font-family:"Antonio";font-style:normal;font-weight:600;font-display:block;src:url(fonts/antonio-latin-600-normal.woff2) format("woff2")}
+
+:root{
+  color-scheme:dark;
+  --bg:#000000;
+  --digit:#82CFF5;     /* cifras: celeste */
+  --acc:#4DB3EB;       /* acento: celeste más intenso */
+  --fg:#E6F3FA;        /* texto lateral */
+  --fg2:#8BA3B1;
+  --card:#111417;
+  --card2:#1C2126;
+  --sep:#262C31;
+  --ui-fg:#EFF4F7;
+  --ui-fg2:#8C979F;
+  --on-acc:#00131F;
+  --danger:#FF6159;
+  --font-ui:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --font-clock:"Antonio","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --h:375px;
+}
+.night{
+  --digit:#B8291E;
+  --acc:#C9392C;
+  --fg:#B1372D;
+  --fg2:#7A2A22;
+  --card:#120807;
+  --card2:#1E0F0D;
+  --sep:#2C1714;
+  --ui-fg:#E4BDB7;
+  --ui-fg2:#99706A;
+  --on-acc:#160403;
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;background:var(--bg);overflow:hidden}
+body{
+  font-family:var(--font-ui);color:var(--ui-fg);
+  -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus{outline:none}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tr{transition:color 1.2s ease,background-color 1.2s ease,border-color 1.2s ease}
+
+/* ---------- Modo reposo (horizontal) ---------- */
+#standby{position:fixed;top:0;right:0;bottom:0;left:0;display:none;background:var(--bg);touch-action:none;overflow:hidden}
+.sb-inner{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;align-items:stretch;padding:0 2.5% 0 2.5%;transition:transform 3s ease}
+.sb-clock{flex:1 1 auto;min-width:0;position:relative}
+#clockCanvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
+.sb-side{
+  flex:0 0 19%;min-width:0;display:flex;flex-direction:column;justify-content:space-between;
+  padding:calc(var(--h)*.15) 0 calc(var(--h)*.13) 2%;
+  font-weight:600;font-size:calc(var(--h)*.072);line-height:1.18;color:var(--fg);letter-spacing:.01em;
+}
+.sb-side .acc{color:var(--acc)}
+.sb-date{white-space:nowrap}
+.sb-temp{min-height:1.18em}
+.sb-alarm svg{display:block;width:.95em;height:.95em;margin-bottom:.18em;color:var(--acc)}
+.sb-alarm small{display:block;font-size:.62em;font-weight:600;color:var(--fg2);letter-spacing:.04em;text-transform:uppercase}
+.sb-alarm .ampm{font-size:.7em}
+#sbGear{
+  position:absolute;top:14px;right:14px;z-index:5;border:0;border-radius:999px;
+  padding:9px 16px;background:var(--card2);color:var(--fg);font-size:15px;font-weight:600;
+  opacity:0;pointer-events:none;transition:opacity .35s ease;
+}
+.controls-on #sbGear{opacity:1;pointer-events:auto}
+
+#arm{
+  position:fixed;left:2.5%;right:21%;bottom:calc(var(--h)*.05);z-index:20;display:none;
+  justify-content:center;pointer-events:none;
+}
+#arm span{
+  pointer-events:auto;cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+  padding:.55em 1.2em;border-radius:999px;background:var(--card2);color:var(--fg);
+  font-size:calc(var(--h)*.046);font-weight:600;
+}
+body.unarmed .sb-inner{opacity:.42}
+.sb-inner{transition:transform 3s ease,opacity .6s ease}
+
+/* ---------- Ajustes (vertical) ---------- */
+#settings{
+  position:fixed;top:0;right:0;bottom:0;left:0;display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:var(--bg);touch-action:pan-y;
+  padding:calc(env(safe-area-inset-top,0px) + 18px) 16px calc(env(safe-area-inset-bottom,0px) + 40px);
+}
+.st-wrap{max-width:560px;margin:0 auto}
+.st-head{padding:4px 4px 0;display:flex;flex-direction:column;gap:6px}
+.st-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+#stTime{font-family:var(--font-clock);font-weight:600;font-size:84px;line-height:.95;color:var(--digit);letter-spacing:.005em}
+#stDate{font-size:16px;color:var(--ui-fg2)}
+#stDone{display:none;border:0;border-radius:999px;background:var(--card2);color:var(--acc);font-weight:600;font-size:16px;padding:9px 18px;margin-top:6px}
+.st-status{display:flex;align-items:flex-start;gap:9px;margin-top:10px;font-size:15px;line-height:1.35;color:var(--ui-fg)}
+.dot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-top:5px;background:var(--acc)}
+.dot.warn{background:#F2A33A}
+.dot.off{background:var(--ui-fg2)}
+.st-tip{margin:2px 0 0;font-size:14px;line-height:1.4;color:var(--ui-fg2)}
+.st-install{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--card);font-size:14px;line-height:1.4;color:var(--ui-fg2)}
+
+h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ui-fg2);margin:30px 16px 8px}
+.group{background:var(--card);border-radius:12px;overflow:hidden}
+.row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:50px;
+  padding:10px 16px;border:0;border-top:.5px solid var(--sep);background:transparent;
+  font-size:17px;text-align:left;color:var(--ui-fg);
+}
+.group>.row:first-child,.group>.row.first{border-top:0}
+.row.col{display:block}
+.row .val{color:var(--ui-fg2)}
+.row .lbl{flex:1 1 auto;min-width:0}
+.foot{font-size:13px;line-height:1.45;color:var(--ui-fg2);margin:8px 16px 0}
+.btn-link{border:0;background:transparent;color:var(--acc);font-size:17px;padding:0}
+.btn-pill{border:0;border-radius:999px;background:var(--card2);color:var(--acc);font-weight:600;font-size:15px;padding:8px 14px;white-space:nowrap}
+
+.alarm-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:.5px solid var(--sep)}
+.alarm-row:first-child{border-top:0}
+.alarm-main{flex:1 1 auto;min-width:0;border:0;background:transparent;text-align:left;padding:0;display:flex;flex-direction:column;gap:3px}
+.a-time{font-family:var(--font-clock);font-weight:200;font-size:46px;line-height:1;color:var(--ui-fg)}
+.a-time .ampm{font-family:var(--font-ui);font-size:20px;font-weight:500;margin-left:4px}
+.a-sub{font-size:14px;color:var(--ui-fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alarm-row.off .a-time{color:var(--ui-fg2)}
+.empty{padding:16px;font-size:15px;color:var(--ui-fg2)}
+
+.switch{position:relative;flex:0 0 auto;width:51px;height:31px}
+.switch input{position:absolute;top:0;left:0;width:100%;height:100%;margin:0;opacity:0;z-index:1;cursor:pointer}
+.switch span{position:absolute;top:0;right:0;bottom:0;left:0;border-radius:16px;background:var(--card2);transition:background-color .2s ease}
+.switch span:after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:var(--ui-fg);box-shadow:0 2px 5px rgba(0,0,0,.35);transition:transform .2s ease}
+.switch input:checked+span{background:var(--acc)}
+.switch input:checked+span:after{transform:translateX(20px)}
+
+.seg{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--card2);margin-top:8px}
+.seg button{flex:1 1 0;min-width:0;border:0;border-radius:7px;background:transparent;color:var(--ui-fg);font-size:14px;font-weight:600;padding:8px 2px}
+.seg button.on{background:var(--acc);color:var(--on-acc)}
+.row-title{font-size:17px}
+
+.tone .check{width:20px;height:20px;color:var(--acc);visibility:hidden}
+.tone.on .check{visibility:visible}
+
+select.inline{border:0;background:transparent;color:var(--ui-fg2);font-size:17px;text-align:right;-webkit-appearance:none;appearance:none;padding:0 2px}
+input[type=time].inline{border:0;border-radius:8px;background:var(--card2);color:var(--ui-fg);font-size:17px;padding:6px 10px;min-width:96px;-webkit-appearance:none;appearance:none}
+
+.meter{position:relative;height:8px;border-radius:4px;background:var(--card2);overflow:hidden;margin-top:10px}
+.meter i{position:absolute;top:0;left:0;bottom:0;width:0;background:var(--acc);border-radius:4px;transition:width .6s ease}
+.meter b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ui-fg)}
+.light-now{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:15px;color:var(--ui-fg2)}
+.light-now strong{color:var(--ui-fg);font-weight:600;font-variant-numeric:tabular-nums}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--card2);color:var(--acc);font-size:13px;font-weight:700;letter-spacing:.03em}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;margin:6px 0 0;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--card2)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-11px;border-radius:50%;background:var(--ui-fg);box-shadow:0 1px 5px rgba(0,0,0,.45)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--card2)}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radius:50%;background:var(--ui-fg)}
+
+.steps{margin:0;padding:6px 16px 10px 36px;font-size:15px;line-height:1.45;color:var(--ui-fg)}
+.steps li{padding:6px 0}
+.steps em{font-style:normal;color:var(--acc)}
+
+/* ---------- Hoja de edición ---------- */
+#sheet{position:fixed;top:0;right:0;bottom:0;left:0;z-index:40;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.62)}
+.sheet-card{width:100%;max-width:560px;max-height:100%;overflow-y:auto;background:var(--card);border-radius:14px 14px 0 0;padding:0 16px calc(env(safe-area-inset-bottom,0px) + 22px)}
+.sheet-bar{display:flex;align-items:center;justify-content:space-between;height:54px}
+.sheet-bar b{font-size:17px;font-weight:600}
+.sheet-bar button{border:0;background:transparent;color:var(--acc);font-size:17px;padding:8px 0}
+#shSave{font-weight:700}
+#shTime{display:block;width:100%;border:0;border-radius:12px;background:var(--card2);color:var(--ui-fg);font-family:var(--font-clock);font-weight:200;font-size:58px;line-height:1.1;text-align:center;padding:10px 0;-webkit-appearance:none;appearance:none}
+#shTime::-webkit-date-and-time-value{text-align:center}
+.days{display:flex;justify-content:space-between;gap:6px;margin:18px 0 6px}
+.days button{width:42px;height:42px;border:0;border-radius:50%;background:var(--card2);color:var(--ui-fg);font-size:15px;font-weight:700}
+.days button.on{background:var(--acc);color:var(--on-acc)}
+.days-hint{font-size:13px;color:var(--ui-fg2);margin:0 0 16px;text-align:center}
+#shLabel{width:100%;border:0;border-radius:10px;background:var(--card2);color:var(--ui-fg);font-size:17px;padding:12px 14px;-webkit-user-select:text;user-select:text}
+#shLabel::placeholder{color:var(--ui-fg2)}
+#shDelete{display:block;width:100%;margin-top:14px;border:0;border-radius:10px;background:var(--card2);color:var(--danger);font-size:17px;padding:14px}
+
+/* ---------- Alarma sonando ---------- */
+#ringing{position:fixed;top:0;right:0;bottom:0;left:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.5vh;background:var(--bg);padding:16px;text-align:center}
+#rgTime{font-family:var(--font-clock);font-weight:600;line-height:1;color:var(--digit);font-size:min(calc(var(--h)*.40),26vw);animation:pulse 2s ease-in-out infinite}
+#rgLabel{font-size:min(calc(var(--h)*.07),26px);font-weight:600;color:var(--fg)}
+.rg-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;margin-top:1vh}
+.rg-actions button{border:0;border-radius:999px;font-size:21px;font-weight:700;padding:16px 34px;min-width:150px}
+#rgSnooze{background:var(--acc);color:var(--on-acc);min-width:200px}
+#rgStop{background:var(--card2);color:var(--fg)}
+#rgWarn{max-width:30em;font-size:14px;line-height:1.4;color:var(--fg2)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+#toast{position:fixed;left:50%;bottom:9%;z-index:70;transform:translateX(-50%);max-width:88%;padding:9px 16px;border-radius:14px;background:var(--card2);color:var(--fg);font-size:15px;font-weight:600;text-align:center;opacity:0;pointer-events:none;transition:opacity .3s ease}
+#toast.on{opacity:1}
+
+.hidden-media{position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1}
+
+/* Orientación */
+@media (orientation:landscape){
+  #standby{display:block}
+  #settings{display:none}
+  body.unarmed #arm{display:flex}
+  #stDone{display:inline-block}
+}
+body.show-settings #standby{display:none}
+body.show-settings #settings{display:block}
+body.show-settings #arm{display:none}
+@media (prefers-reduced-motion:reduce){#rgTime{animation:none}.sb-inner{transition:none}}
+</style>
+</head>
+<body class="unarmed">
+
+<main id="standby" aria-label="Reloj en reposo">
+  <div class="sb-inner" id="sbInner">
+    <div class="sb-clock"><canvas id="clockCanvas" aria-hidden="true"></canvas></div>
+    <aside class="sb-side tr">
+      <div>
+        <div class="sb-date"><span id="sbDay" class="acc tr">LUN</span> <span id="sbNum">12</span></div>
+        <div class="sb-temp" id="sbTemp"></div>
+      </div>
+      <div class="sb-alarm tr" id="sbAlarm" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8" fill="currentColor"/><path d="M12 8.8V13l2.8 1.9" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.4 6.6 6.5 3.8M20.6 6.6 17.5 3.8M6.9 19.7 5.5 21.4M17.1 19.7l1.4 1.7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        <small id="sbAlarmNote" hidden>Pospuesta</small>
+        <div id="sbAlarmTime">6:30</div>
+      </div>
+    </aside>
+  </div>
+  <button id="sbGear" type="button">Ajustes</button>
+</main>
+
+<div id="arm"><span role="button" tabindex="0">Toca la pantalla para activar el despertador</span></div>
+
+<section id="settings" aria-label="Ajustes">
+  <div class="st-wrap">
+    <div class="st-head">
+      <div class="st-top">
+        <div id="stTime" class="tr">06:30</div>
+        <button id="stDone" type="button">Listo</button>
+      </div>
+      <div id="stDate">lunes 12 de octubre</div>
+      <div class="st-status"><span class="dot" id="stDot"></span><span id="stStatus">Toca cualquier parte para activar el sonido de la alarma.</span></div>
+      <p class="st-tip">Gira el iPhone en horizontal para ver el reloj en reposo.</p>
+      <div class="st-install" id="stInstall" hidden>Para abrirla como app independiente: en Safari toca <strong>Compartir</strong> y luego <strong>Agregar a pantalla de inicio</strong>.</div>
+    </div>
+
+    <h2>Alarmas</h2>
+    <div class="group" id="alarmList"></div>
+    <div class="group" style="margin-top:10px">
+      <button class="row first" type="button" id="addAlarm"><span class="btn-link">Agregar alarma</span></button>
+    </div>
+
+    <h2>Sonido</h2>
+    <div class="group" id="toneList">
+      <button class="row tone" type="button" data-v="amanecer"><span class="lbl">Amanecer</span><span class="val">marimba suave</span><svg class="check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="row tone" type="button" data-v="campana"><span class="lbl">Campana</span><span class="val">tonos de campana</span><svg class="check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="row tone" type="button" data-v="clasico"><span class="lbl">Clásico</span><span class="val">pitido digital</span><svg class="check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div class="group" style="margin-top:10px">
+      <div class="row first"><span class="lbl">Escuchar tono</span><button class="btn-pill" type="button" id="previewBtn">Reproducir</button></div>
+      <label class="row" for="snoozeSel"><span class="lbl">Posponer</span>
+        <select class="inline" id="snoozeSel">
+          <option value="5">5 min</option><option value="9">9 min</option><option value="10">10 min</option><option value="15">15 min</option>
+        </select>
+      </label>
+      <div class="row"><span class="lbl">Probar el despertador</span><button class="btn-pill" type="button" id="testBtn">Sonar en 10 s</button></div>
+    </div>
+    <p class="foot">La alarma empieza suave y sube en 15 segundos. Usa el volumen multimedia: mientras suena el tono, ajusta el volumen con los botones laterales. Pruébala también con el interruptor de silencio activado.</p>
+
+    <h2>Luz ambiente</h2>
+    <div class="group">
+      <div class="row col first">
+        <span class="row-title">Colores según la luz</span>
+        <div class="seg" data-key="light" id="segLight">
+          <button type="button" data-v="auto">Sensor</button>
+          <button type="button" data-v="horario">Horario</button>
+          <button type="button" data-v="dia">Celeste</button>
+          <button type="button" data-v="noche">Rojo</button>
+        </div>
+      </div>
+      <div class="row col" id="lightAuto">
+        <div class="light-now"><span>Luz medida: <strong id="lvNum">—</strong></span><span class="chip" id="lvChip">—</span></div>
+        <div class="meter"><i id="lvBar"></i><b id="lvThr"></b></div>
+        <div class="light-now" style="margin-top:14px"><span>Rojo cuando baje de</span><strong id="thrNum">10</strong></div>
+        <input type="range" id="thrRange" min="2" max="60" step="1" value="10" aria-label="Umbral de oscuridad">
+      </div>
+      <div class="row" id="lightFrom"><span class="lbl">Rojo desde</span><input class="inline" type="time" id="nightFrom" value="22:00"></div>
+      <div class="row" id="lightTo"><span class="lbl">Celeste desde</span><input class="inline" type="time" id="nightTo" value="07:00"></div>
+    </div>
+    <p class="foot" id="lightFoot">El sensor usa la cámara frontal solo para medir cuánta luz hay; no guarda ni envía imágenes. Si la cámara no está disponible, se usa el horario.</p>
+
+    <h2>Pantalla</h2>
+    <div class="group">
+      <div class="row col first">
+        <span class="row-title">Estilo del reloj</span>
+        <div class="seg" data-key="style" id="segStyle">
+          <button type="button" data-v="clasico">Clásico</button>
+          <button type="button" data-v="fino">Fino</button>
+          <button type="button" data-v="redondo">Redondeado</button>
+        </div>
+      </div>
+      <label class="row" for="h24"><span class="lbl">Formato de 24 horas</span><span class="switch"><input type="checkbox" id="h24"><span></span></span></label>
+      <label class="row" for="showTemp"><span class="lbl">Mostrar temperatura</span><span class="switch"><input type="checkbox" id="showTemp"><span></span></span></label>
+      <div class="row"><span class="lbl">Ubicación <span class="val" id="locName">Santiago</span></span><button class="btn-pill" type="button" id="locBtn">Usar mi ubicación</button></div>
+    </div>
+    <p class="foot">En horizontal, desliza hacia arriba o abajo para cambiar el estilo. Toca la pantalla para ver el botón de ajustes.</p>
+
+    <h2>Para que suene toda la noche</h2>
+    <div class="group">
+      <ol class="steps">
+        <li>Deja el iPhone conectado al cargador.</li>
+        <li>Ve a <em>Ajustes › Pantalla y brillo › Bloqueo automático</em> y elige <em>Nunca</em>.</li>
+        <li>Desactiva el bloqueo de orientación vertical en el Centro de control.</li>
+        <li>Deja esta app abierta y al frente. Si la cierras o se bloquea la pantalla, la alarma no sonará.</li>
+        <li>Abre la app, toca la pantalla una vez y ponla en horizontal.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<div id="sheet" hidden>
+  <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+    <div class="sheet-bar">
+      <button type="button" id="shCancel">Cancelar</button>
+      <b id="shTitle">Editar alarma</b>
+      <button type="button" id="shSave">Guardar</button>
+    </div>
+    <input type="time" id="shTime" value="06:30" aria-label="Hora de la alarma">
+    <div class="days" id="shDays">
+      <button type="button" data-d="1" aria-label="Lunes">L</button>
+      <button type="button" data-d="2" aria-label="Martes">M</button>
+      <button type="button" data-d="3" aria-label="Miércoles">M</button>
+      <button type="button" data-d="4" aria-label="Jueves">J</button>
+      <button type="button" data-d="5" aria-label="Viernes">V</button>
+      <button type="button" data-d="6" aria-label="Sábado">S</button>
+      <button type="button" data-d="0" aria-label="Domingo">D</button>
+    </div>
+    <p class="days-hint" id="shDaysHint">Una vez</p>
+    <input type="text" id="shLabel" maxlength="40" placeholder="Etiqueta (opcional)" autocomplete="off">
+    <button type="button" id="shDelete">Eliminar alarma</button>
+  </div>
+</div>
+
+<div id="ringing" hidden>
+  <div id="rgTime">06:30</div>
+  <div id="rgLabel">Alarma</div>
+  <div class="rg-actions">
+    <button type="button" id="rgSnooze">Posponer</button>
+    <button type="button" id="rgStop">Detener</button>
+  </div>
+  <div id="rgWarn" hidden>No se pudo reproducir el sonido. Al abrir la app, toca la pantalla una vez para activarlo.</div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<video id="keepAwake" class="hidden-media" src="keepawake.mp4" muted loop playsinline webkit-playsinline preload="auto"></video>
+<video id="camVideo" class="hidden-media" muted playsinline webkit-playsinline></video>
+<audio id="alarmAudio" preload="auto"></audio>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Utilidades ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var DAY_ABBR = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+  var DAY_LONG = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  var DAY_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  var MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  var SANTIAGO = { lat: -33.4489, lon: -70.6693, name: 'Santiago' };
+
+  var SOUNDS = {
+    amanecer: { file: 'sounds/amanecer.mp3', loop: 17.4 },
+    campana: { file: 'sounds/campana.mp3', loop: 18.8 },
+    clasico: { file: 'sounds/clasico.mp3', loop: 17.1 }
+  };
+  var STYLES = {
+    clasico: { name: 'Clásico', weight: 600, family: '"Antonio", "Arial Narrow", sans-serif', colon: 0.9 },
+    fino: { name: 'Fino', weight: 200, family: '"Antonio", "Arial Narrow", sans-serif', colon: 0.85 },
+    redondo: { name: 'Redondeado', weight: 700, family: 'ui-rounded, "SF Pro Rounded", -apple-system, "Helvetica Neue", sans-serif', colon: 0.8 }
+  };
+  var STYLE_ORDER = ['clasico', 'fino', 'redondo'];
+  var PAL = {
+    day: [0x82, 0xCF, 0xF5],
+    night: [0xB8, 0x29, 0x1E],
+    nightBright: [0xE8, 0x4A, 0x3B]
+  };
+
+  /* ---------- Ajustes guardados ---------- */
+  var KEY = 'reposo.v1';
+  var DEF = {
+    alarms: [{ id: 'a1', h: 6, m: 30, days: [1, 2, 3, 4, 5], on: false, label: '' }],
+    sound: 'amanecer', snooze: 9, style: 'clasico', h24: true, showTemp: true,
+    light: 'auto', thr: 10, nightFrom: '22:00', nightTo: '07:00', loc: null,
+    snoozeUntil: null, snoozeLabel: ''
+  };
+  var S = load();
+
+  function load() {
+    var out = JSON.parse(JSON.stringify(DEF));
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var st = JSON.parse(raw);
+        for (var k in st) if (Object.prototype.hasOwnProperty.call(out, k)) out[k] = st[k];
+      }
+    } catch (e) { /* sin almacenamiento: se usan valores por defecto */ }
+    if (!SOUNDS[out.sound]) out.sound = 'amanecer';
+    if (!STYLES[out.style]) out.style = 'clasico';
+    return out;
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { }
+  }
+
+  /* ---------- Estado ---------- */
+  var armed = false;
+  var ringing = null;        // { label, start }
+  var previewing = false, previewTimer = null;
+  var testAt = null;
+  var lastCheck = Date.now();
+  var isNight = null, brightUntil = 0;
+  var lastTouch = 0;
+  var audio = $('alarmAudio');
+  var audioKey = null;
+  var wakeLock = null;
+
+  /* ---------- Formatos ---------- */
+  function fmtTime(h, m, withSuffix) {
+    if (S.h24) return pad(h) + ':' + pad(m);
+    var t = ((h % 12) || 12) + ':' + pad(m);
+    return withSuffix ? t + (h < 12 ? ' a. m.' : ' p. m.') : t;
+  }
+  function daysSummary(days) {
+    if (!days || !days.length) return 'Una vez';
+    var s = days.slice().sort().join(',');
+    if (s === '0,1,2,3,4,5,6') return 'Todos los días';
+    if (s === '1,2,3,4,5') return 'Lunes a viernes';
+    if (s === '0,6') return 'Fines de semana';
+    var order = [1, 2, 3, 4, 5, 6, 0];
+    return order.filter(function (d) { return days.indexOf(d) >= 0; }).map(function (d) { return DAY_SHORT[d]; }).join(', ');
+  }
+  function minutesOf(str) {
+    var p = String(str || '0:0').split(':');
+    return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0);
+  }
+
+  /* ---------- Cálculo de alarmas ---------- */
+  function occurrenceOn(a, base, offsetDays) {
+    var d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + offsetDays, a.h, a.m, 0, 0);
+    if (a.days && a.days.length && a.days.indexOf(d.getDay()) < 0) return null;
+    return d;
+  }
+  function nextAlarm(now) {
+    var best = null;
+    S.alarms.forEach(function (a) {
+      if (!a.on) return;
+      for (var i = 0; i <= 7; i++) {
+        var d = occurrenceOn(a, now, i);
+        if (d && d.getTime() > now.getTime()) {
+          if (!best || d < best.date) best = { date: d, alarm: a };
+          break;
+        }
+      }
+    });
+    return best;
+  }
+  function whenText(date, now) {
+    var a = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var b = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    var diff = Math.round((b - a) / 86400000);
+    var t = fmtTime(date.getHours(), date.getMinutes(), true);
+    if (diff === 0) return 'hoy a las ' + t;
+    if (diff === 1) return 'mañana a las ' + t;
+    return 'el ' + DAY_LONG[date.getDay()] + ' a las ' + t;
+  }
+
+  /* ---------- Reloj en canvas ---------- */
+  var canvas = $('clockCanvas');
+  var ctx = canvas.getContext('2d');
+  var box = { w: 0, h: 0, dpr: 1 };
+  var metrics = null;
+  var curColor = PAL.day.slice(), fromColor = PAL.day.slice(), toColor = PAL.day.slice();
+  var colorAnim = null;
+  var lastText = '';
+
+  function fontStr(size) {
+    var st = STYLES[S.style];
+    return st.weight + ' ' + size + 'px ' + st.family;
+  }
+  function measure() {
+    var st = STYLES[S.style];
+    ctx.font = fontStr(100);
+    var maxW = 0, asc = 0;
+    for (var i = 0; i < 10; i++) {
+      var m = ctx.measureText(String(i));
+      if (m.width > maxW) maxW = m.width;
+      if (m.actualBoundingBoxAscent && m.actualBoundingBoxAscent > asc) asc = m.actualBoundingBoxAscent;
+    }
+    if (!asc) asc = st.weight === 700 ? 72 : 86;
+    var colonW = ctx.measureText(':').width * st.colon;
+    metrics = { digit: maxW, colon: colonW, asc: asc };
+  }
+  function resizeCanvas() {
+    var r = canvas.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 3);
+    if (!r.width || !r.height) return false;
+    box = { w: r.width, h: r.height, dpr: dpr };
+    canvas.width = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    return true;
+  }
+  function rgb(c) { return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')'; }
+  function drawClock(force) {
+    var now = new Date();
+    var text = fmtTime(now.getHours(), now.getMinutes(), false);
+    if (!force && text === lastText && !colorAnim) return;
+    lastText = text;
+    if (!box.w && !resizeCanvas()) return;
+    if (!metrics) measure();
+    var m = metrics;
+    var widest = 4 * m.digit + m.colon;
+    var scale = Math.min((box.w * 0.98) / widest, (box.h * 0.82) / m.asc);
+    var size = 100 * scale;
+    ctx.setTransform(box.dpr, 0, 0, box.dpr, 0, 0);
+    ctx.clearRect(0, 0, box.w, box.h);
+    ctx.font = fontStr(size);
+    ctx.fillStyle = rgb(curColor);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    var chars = text.split('');
+    var total = 0;
+    chars.forEach(function (ch) { total += (ch === ':' ? m.colon : m.digit) * scale; });
+    var x = (box.w - total) / 2;
+    var baseline = box.h / 2 + (m.asc * scale) / 2;
+    chars.forEach(function (ch) {
+      var cw = (ch === ':' ? m.colon : m.digit) * scale;
+      ctx.fillText(ch, x + cw / 2, baseline);
+      x += cw;
+    });
+  }
+  function animateColorTo(target) {
+    if (target[0] === toColor[0] && target[1] === toColor[1] && target[2] === toColor[2]) return;
+    fromColor = curColor.slice();
+    toColor = target.slice();
+    var start = null, dur = 1400;
+    if (colorAnim) cancelAnimationFrame(colorAnim);
+    var step = function (ts) {
+      if (start === null) start = ts;
+      var p = Math.min(1, (ts - start) / dur);
+      var e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      for (var i = 0; i < 3; i++) curColor[i] = fromColor[i] + (toColor[i] - fromColor[i]) * e;
+      colorAnim = p < 1 ? requestAnimationFrame(step) : null;
+      drawClock(true);
+    };
+    colorAnim = requestAnimationFrame(step);
+  }
+
+  /* ---------- Luz ambiente ---------- */
+  var cam = { stream: null, ok: false, level: null, night: null, below: 0, above: 0, timer: null, starting: false, error: '' };
+  var sampleCanvas = document.createElement('canvas');
+  sampleCanvas.width = 32; sampleCanvas.height = 24;
+  var sctx = sampleCanvas.getContext('2d');
+
+  function camStart() {
+    if (S.light !== 'auto' || cam.stream || cam.starting) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      cam.error = 'Este navegador no permite usar la cámara: se usa el horario.';
+      renderLight(); return;
+    }
+    cam.starting = true;
+    navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } } })
+      .then(function (st) {
+        cam.starting = false;
+        if (S.light !== 'auto') { st.getTracks().forEach(function (t) { t.stop(); }); return; }
+        cam.stream = st; cam.ok = true; cam.error = '';
+        var v = $('camVideo');
+        v.srcObject = st;
+        var p = v.play(); if (p && p.catch) p.catch(function () { });
+        var tr = st.getVideoTracks()[0];
+        if (tr) tr.addEventListener('ended', function () { camStop(); });
+        clearInterval(cam.timer);
+        cam.timer = setInterval(camSample, 2500);
+        setTimeout(camSample, 1200);
+        renderLight();
+      })
+      .catch(function (e) {
+        cam.starting = false; cam.ok = false;
+        cam.error = (e && e.name === 'NotAllowedError')
+          ? 'Sin permiso para la cámara: se usa el horario.'
+          : 'Cámara no disponible: se usa el horario.';
+        renderLight(); applyTheme();
+      });
+  }
+  function camStop() {
+    clearInterval(cam.timer); cam.timer = null;
+    if (cam.stream) cam.stream.getTracks().forEach(function (t) { t.stop(); });
+    cam.stream = null; cam.ok = false;
+    try { $('camVideo').srcObject = null; } catch (e) { }
+  }
+  function camSample() {
+    var v = $('camVideo');
+    if (!cam.stream || !v.videoWidth) return;
+    try {
+      sctx.drawImage(v, 0, 0, 32, 24);
+      var d = sctx.getImageData(0, 0, 32, 24).data, sum = 0;
+      for (var i = 0; i < d.length; i += 4) sum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+      var lv = sum / (d.length / 4) / 255 * 100;
+      cam.level = cam.level === null ? lv : cam.level * 0.6 + lv * 0.4;
+    } catch (e) { return; }
+    var thr = S.thr, hi = S.thr + 8;
+    if (cam.night === null) cam.night = cam.level < thr;
+    else if (!cam.night) {
+      cam.below = cam.level < thr ? cam.below + 1 : 0;
+      if (cam.below >= 3) { cam.night = true; cam.below = 0; }
+    } else {
+      cam.above = cam.level > hi ? cam.above + 1 : 0;
+      if (cam.above >= 3) { cam.night = false; cam.above = 0; }
+    }
+    applyTheme();
+    renderLightLive();
+  }
+  function scheduleNight(now) {
+    var mins = now.getHours() * 60 + now.getMinutes();
+    var a = minutesOf(S.nightFrom), b = minutesOf(S.nightTo);
+    if (a === b) return false;
+    return a < b ? (mins >= a && mins < b) : (mins >= a || mins < b);
+  }
+  function computeNight() {
+    if (S.light === 'dia') return false;
+    if (S.light === 'noche') return true;
+    if (S.light === 'auto' && cam.ok && cam.night !== null) return cam.night;
+    return scheduleNight(new Date());
+  }
+  function applyTheme() {
+    var n = computeNight();
+    if (n !== isNight) {
+      isNight = n;
+      document.documentElement.classList.toggle('night', n);
+      var meta = document.querySelector('meta[name=theme-color]');
+      if (meta) meta.setAttribute('content', '#000000');
+    }
+    var target = !n ? PAL.day : (Date.now() < brightUntil ? PAL.nightBright : PAL.night);
+    if (isNight !== null && lastText) animateColorTo(target);
+    else { curColor = target.slice(); toColor = target.slice(); }
+  }
+
+  /* ---------- Audio ---------- */
+  function setSoundSrc() {
+    if (audioKey !== S.sound) {
+      audio.src = SOUNDS[S.sound].file;
+      audioKey = S.sound;
+      try { audio.load(); } catch (e) { }
+    }
+  }
+  audio.addEventListener('timeupdate', function () {
+    if (!(ringing || previewing)) return;
+    var d = audio.duration;
+    if (d && audio.currentTime > d - 0.8) audio.currentTime = SOUNDS[audioKey].loop;
+  });
+  audio.addEventListener('ended', function () {
+    if (!(ringing || previewing)) return;
+    var jump = function () { try { audio.currentTime = SOUNDS[audioKey].loop; } catch (e) { } };
+    var p = audio.play();
+    if (p && p.then) p.then(jump).catch(function () { }); else jump();
+  });
+
+  var arming = false;
+  function arm() {
+    if (armed || arming) return;
+    arming = true;
+    setTimeout(function () { arming = false; }, 1500);
+    setSoundSrc();
+    var p;
+    try { p = audio.play(); } catch (e) { p = null; }
+    var ok = function () {
+      armed = true;
+      document.body.classList.remove('unarmed');
+      setTimeout(function () {
+        if (!ringing && !previewing) { audio.pause(); try { audio.currentTime = 0; } catch (e) { } }
+      }, 80);
+      renderStatus();
+    };
+    if (p && p.then) p.then(ok).catch(function () { renderStatus(); });
+    else ok();
+    startKeepAwake();
+    camStart();
+  }
+  function startKeepAwake() {
+    var v = $('keepAwake');
+    v.muted = true;
+    var p = v.play(); if (p && p.catch) p.catch(function () { });
+    if (navigator.wakeLock && navigator.wakeLock.request && !wakeLock) {
+      navigator.wakeLock.request('screen').then(function (l) {
+        wakeLock = l;
+        l.addEventListener('release', function () { wakeLock = null; });
+      }).catch(function () { });
+    }
+  }
+
+  function startPreview() {
+    setSoundSrc();
+    previewing = true;
+    try { audio.currentTime = SOUNDS[S.sound].loop; } catch (e) { }
+    var p = audio.play();
+    if (p && p.catch) p.catch(function () { previewing = false; renderPreviewBtn(); });
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(stopPreview, 7000);
+    renderPreviewBtn();
+  }
+  function stopPreview() {
+    clearTimeout(previewTimer);
+    if (previewing && !ringing) audio.pause();
+    previewing = false;
+    renderPreviewBtn();
+  }
+  function renderPreviewBtn() { $('previewBtn').textContent = previewing ? 'Detener' : 'Reproducir'; }
+
+  /* ---------- Sonar / posponer / detener ---------- */
+  function ring(label) {
+    if (ringing) return;
+    if (previewing) stopPreview();
+    ringing = { label: label || 'Alarma', start: Date.now() };
+    $('rgLabel').textContent = ringing.label;
+    $('rgSnooze').textContent = 'Posponer ' + S.snooze + ' min';
+    $('rgWarn').hidden = true;
+    $('ringing').hidden = false;
+    brightUntil = Date.now() + 60000;
+    applyTheme();
+    updateRingTime();
+    setSoundSrc();
+    try { audio.currentTime = 0; } catch (e) { }
+    var p = audio.play();
+    if (p && p.catch) p.catch(function () { $('rgWarn').hidden = false; });
+    startKeepAwake();
+  }
+  function stopRing() {
+    if (!ringing) return;
+    audio.pause();
+    try { audio.currentTime = 0; } catch (e) { }
+    ringing = null;
+    $('ringing').hidden = true;
+    renderSide(); renderStatus();
+  }
+  function snooze() {
+    if (!ringing) return;
+    S.snoozeUntil = Date.now() + S.snooze * 60000;
+    S.snoozeLabel = ringing.label;
+    save();
+    stopRing();
+    toast('Pospuesta ' + S.snooze + ' minutos');
+  }
+  function stopAll() {
+    S.snoozeUntil = null; S.snoozeLabel = '';
+    save();
+    stopRing();
+  }
+  function updateRingTime() {
+    if (!ringing) return;
+    var n = new Date();
+    $('rgTime').textContent = fmtTime(n.getHours(), n.getMinutes(), false);
+  }
+
+  function checkAlarms(nowMs) {
+    var now = new Date(nowMs);
+    var fired = null;
+    S.alarms.forEach(function (a) {
+      if (!a.on || fired) return;
+      for (var i = 0; i >= -1; i--) {
+        var d = occurrenceOn(a, now, i);
+        if (!d) continue;
+        var t = d.getTime();
+        if (t > lastCheck && t <= nowMs && nowMs - t < 30 * 60000) {
+          fired = a;
+          if (!a.days || !a.days.length) { a.on = false; save(); renderAlarms(); }
+          break;
+        }
+      }
+    });
+    if (fired) {
+      if (S.snoozeUntil) { S.snoozeUntil = null; save(); }
+      ring(fired.label || 'Alarma');
+      return;
+    }
+    if (S.snoozeUntil && nowMs >= S.snoozeUntil) {
+      var late = nowMs - S.snoozeUntil;
+      var lbl = S.snoozeLabel;
+      S.snoozeUntil = null; S.snoozeLabel = ''; save();
+      if (late < 30 * 60000) ring(lbl || 'Alarma');
+      return;
+    }
+    if (testAt && nowMs >= testAt) {
+      testAt = null;
+      ring('Prueba del despertador');
+    }
+  }
+
+  /* ---------- Clima ---------- */
+  var weather = { temp: null, at: 0, busy: false };
+  function fetchWeather(force) {
+    if (!S.showTemp || weather.busy) return;
+    if (!force && Date.now() - weather.at < 20 * 60000) return;
+    var loc = S.loc || SANTIAGO;
+    weather.busy = true;
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + loc.lat.toFixed(3) + '&longitude=' + loc.lon.toFixed(3) + '&current_weather=true&timezone=auto';
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var to = setTimeout(function () { if (ctrl) ctrl.abort(); }, 12000);
+    fetch(url, ctrl ? { signal: ctrl.signal } : {}).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.current_weather && typeof j.current_weather.temperature === 'number') {
+        weather.temp = Math.round(j.current_weather.temperature);
+        weather.at = Date.now();
+      }
+    }).catch(function () { weather.at = Date.now() - 15 * 60000; /* reintenta en 5 min */ })
+      .then(function () { clearTimeout(to); weather.busy = false; renderSide(); });
+  }
+
+  /* ---------- Render ---------- */
+  function renderSide() {
+    var now = new Date();
+    $('sbDay').textContent = DAY_ABBR[now.getDay()];
+    $('sbNum').textContent = now.getDate();
+    $('sbTemp').textContent = (S.showTemp && weather.temp !== null) ? weather.temp + '°' : '';
+    var el = $('sbAlarm'), note = $('sbAlarmNote'), tEl = $('sbAlarmTime');
+    var target = null, snoozed = false;
+    if (S.snoozeUntil && S.snoozeUntil > now.getTime()) { target = new Date(S.snoozeUntil); snoozed = true; }
+    else { var nx = nextAlarm(now); if (nx && nx.date - now < 24 * 3600000) target = nx.date; }
+    if (!target) { el.hidden = true; return; }
+    el.hidden = false;
+    note.hidden = !snoozed;
+    var h = target.getHours(), m = target.getMinutes();
+    if (S.h24) tEl.textContent = pad(h) + ':' + pad(m);
+    else tEl.innerHTML = ((h % 12) || 12) + ':' + pad(m) + '<span class="ampm">' + (h < 12 ? 'AM' : 'PM') + '</span>';
+  }
+  function renderHeader() {
+    var now = new Date();
+    $('stTime').textContent = fmtTime(now.getHours(), now.getMinutes(), false);
+    $('stDate').textContent = DAY_LONG[now.getDay()] + ' ' + now.getDate() + ' de ' + MONTHS[now.getMonth()];
+  }
+  function renderStatus() {
+    var now = new Date(), dot = $('stDot'), txt;
+    var nx = nextAlarm(now);
+    if (!armed) { dot.className = 'dot warn'; txt = 'Toca cualquier parte de la pantalla para activar el sonido de la alarma.'; }
+    else if (S.snoozeUntil && S.snoozeUntil > now.getTime()) { dot.className = 'dot'; txt = 'Alarma pospuesta hasta las ' + fmtTime(new Date(S.snoozeUntil).getHours(), new Date(S.snoozeUntil).getMinutes(), true) + '.'; }
+    else if (nx) { dot.className = 'dot'; txt = 'Despertador listo. Próxima alarma ' + whenText(nx.date, now) + '.'; }
+    else { dot.className = 'dot off'; txt = 'Despertador listo, pero no hay alarmas activas.'; }
+    $('stStatus').textContent = txt;
+  }
+  function renderAlarms() {
+    var list = $('alarmList');
+    var items = S.alarms.slice().sort(function (a, b) { return (a.h * 60 + a.m) - (b.h * 60 + b.m); });
+    if (!items.length) { list.innerHTML = '<div class="empty">No hay alarmas. Agrega una para empezar.</div>'; return; }
+    list.innerHTML = '';
+    items.forEach(function (a) {
+      var row = document.createElement('div');
+      row.className = 'alarm-row' + (a.on ? '' : ' off');
+      var time = S.h24 ? pad(a.h) + ':' + pad(a.m)
+        : ((a.h % 12) || 12) + ':' + pad(a.m) + '<span class="ampm">' + (a.h < 12 ? 'a. m.' : 'p. m.') + '</span>';
+      var sub = (a.label ? escapeHtml(a.label) + ' · ' : '') + daysSummary(a.days);
+      row.innerHTML = '<button type="button" class="alarm-main" data-edit="' + a.id + '"><span class="a-time">' + time + '</span><span class="a-sub">' + sub + '</span></button>' +
+        '<span class="switch"><input type="checkbox" data-toggle="' + a.id + '" aria-label="Activar alarma de las ' + pad(a.h) + ':' + pad(a.m) + '"' + (a.on ? ' checked' : '') + '><span></span></span>';
+      list.appendChild(row);
+    });
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function renderSegs() {
+    [['segLight', S.light], ['segStyle', S.style]].forEach(function (p) {
+      var btns = $(p[0]).querySelectorAll('button');
+      for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-v') === p[1]);
+    });
+    var tones = document.querySelectorAll('.tone');
+    for (var i = 0; i < tones.length; i++) tones[i].classList.toggle('on', tones[i].getAttribute('data-v') === S.sound);
+    $('snoozeSel').value = String(S.snooze);
+    $('h24').checked = !!S.h24;
+    $('showTemp').checked = !!S.showTemp;
+    $('locName').textContent = S.loc ? (S.loc.name || 'Mi ubicación') : 'Santiago';
+    $('nightFrom').value = S.nightFrom;
+    $('nightTo').value = S.nightTo;
+    $('thrRange').value = S.thr;
+    renderLight();
+  }
+  function renderLight() {
+    var auto = S.light === 'auto', sched = S.light === 'horario';
+    $('lightAuto').hidden = !auto;
+    var showTimes = sched || (auto && !cam.ok);
+    $('lightFrom').hidden = !showTimes;
+    $('lightTo').hidden = !showTimes;
+    var foot = $('lightFoot');
+    if (auto) foot.textContent = cam.error || 'El sensor usa la cámara frontal solo para medir cuánta luz hay; no guarda ni envía imágenes. Si la cámara no está disponible, se usa el horario.';
+    else if (sched) foot.textContent = 'Los colores cambian a rojo y vuelven a celeste a las horas indicadas.';
+    else foot.textContent = 'Los colores quedan fijos.';
+    renderLightLive();
+  }
+  function renderLightLive() {
+    $('thrNum').textContent = S.thr;
+    $('lvThr').style.left = Math.min(100, S.thr) + '%';
+    if (cam.level === null) { $('lvNum').textContent = cam.stream ? 'midiendo…' : '—'; $('lvBar').style.width = '0'; }
+    else { $('lvNum').textContent = Math.round(cam.level); $('lvBar').style.width = Math.min(100, cam.level) + '%'; }
+    $('lvChip').textContent = isNight ? 'Rojo' : 'Celeste';
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; t.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('on'); }, 2400);
+  }
+
+  /* ---------- Hoja de edición ---------- */
+  var editing = null, editDays = [];
+  function openSheet(id) {
+    var a = null;
+    for (var i = 0; i < S.alarms.length; i++) if (S.alarms[i].id === id) a = S.alarms[i];
+    editing = a ? a.id : null;
+    $('shTitle').textContent = a ? 'Editar alarma' : 'Nueva alarma';
+    $('shTime').value = a ? pad(a.h) + ':' + pad(a.m) : '07:00';
+    editDays = a ? (a.days || []).slice() : [1, 2, 3, 4, 5];
+    $('shLabel').value = a ? (a.label || '') : '';
+    $('shDelete').hidden = !a;
+    renderDays();
+    $('sheet').hidden = false;
+  }
+  function closeSheet() { $('sheet').hidden = true; editing = null; }
+  function renderDays() {
+    var b = $('shDays').querySelectorAll('button');
+    for (var i = 0; i < b.length; i++) b[i].classList.toggle('on', editDays.indexOf(+b[i].getAttribute('data-d')) >= 0);
+    $('shDaysHint').textContent = daysSummary(editDays);
+  }
+  function saveSheet() {
+    var v = $('shTime').value || '07:00';
+    var p = v.split(':');
+    var h = Math.min(23, parseInt(p[0], 10) || 0), m = Math.min(59, parseInt(p[1], 10) || 0);
+    var label = $('shLabel').value.trim();
+    if (editing) {
+      S.alarms.forEach(function (a) { if (a.id === editing) { a.h = h; a.m = m; a.days = editDays.slice(); a.label = label; a.on = true; } });
+    } else {
+      S.alarms.push({ id: 'a' + Date.now(), h: h, m: m, days: editDays.slice(), on: true, label: label });
+    }
+    save(); closeSheet(); renderAlarms(); renderSide(); renderStatus();
+    var nx = nextAlarm(new Date());
+    if (nx) toast('Sonará ' + whenText(nx.date, new Date()));
+  }
+  function deleteAlarm() {
+    if (!editing) return;
+    S.alarms = S.alarms.filter(function (a) { return a.id !== editing; });
+    save(); closeSheet(); renderAlarms(); renderSide(); renderStatus();
+  }
+
+  /* ---------- Eventos ---------- */
+  function gesture() { if (!armed) arm(); }
+  document.addEventListener('touchend', gesture, true);
+  document.addEventListener('click', gesture, true);
+
+  // Modo reposo: toque = controles y brillo; deslizar vertical = estilo
+  var sb = $('standby'), tStart = null, controlsTimer = null;
+  function sbTap() {
+    document.body.classList.add('controls-on');
+    clearTimeout(controlsTimer);
+    controlsTimer = setTimeout(function () { document.body.classList.remove('controls-on'); }, 5000);
+    if (isNight) { brightUntil = Date.now() + 8000; applyTheme(); }
+  }
+  function cycleStyle(dir) {
+    var i = STYLE_ORDER.indexOf(S.style);
+    S.style = STYLE_ORDER[(i + dir + STYLE_ORDER.length) % STYLE_ORDER.length];
+    save(); metrics = null; lastText = ''; drawClock(true); renderSegs();
+    toast('Estilo ' + STYLES[S.style].name);
+  }
+  sb.addEventListener('touchstart', function (e) {
+    var t = e.touches[0]; tStart = { x: t.clientX, y: t.clientY };
+  }, { passive: true });
+  sb.addEventListener('touchend', function (e) {
+    lastTouch = Date.now();
+    if (!tStart) return;
+    var t = e.changedTouches[0], dx = t.clientX - tStart.x, dy = t.clientY - tStart.y;
+    tStart = null;
+    if (e.target.closest && e.target.closest('#sbGear')) return;
+    if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx)) cycleStyle(dy < 0 ? 1 : -1);
+    else if (Math.abs(dx) < 14 && Math.abs(dy) < 14) sbTap();
+  });
+  sb.addEventListener('click', function (e) {
+    if (Date.now() - lastTouch < 700) return;
+    if (e.target.closest && e.target.closest('#sbGear')) return;
+    sbTap();
+  });
+  $('sbGear').addEventListener('click', function () { document.body.classList.add('show-settings'); });
+  $('stDone').addEventListener('click', function () { document.body.classList.remove('show-settings'); setTimeout(onResize, 30); });
+  $('arm').addEventListener('click', function () { arm(); });
+  document.addEventListener('keydown', function (e) {
+    if (!$('sheet').hidden || document.body.classList.contains('show-settings')) return;
+    if (e.key === 'ArrowUp') cycleStyle(1);
+    if (e.key === 'ArrowDown') cycleStyle(-1);
+  });
+
+  // Ajustes
+  $('alarmList').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-edit]') : null;
+    if (b) openSheet(b.getAttribute('data-edit'));
+  });
+  $('alarmList').addEventListener('change', function (e) {
+    var id = e.target.getAttribute('data-toggle');
+    if (!id) return;
+    S.alarms.forEach(function (a) { if (a.id === id) a.on = e.target.checked; });
+    save(); renderAlarms(); renderSide(); renderStatus();
+    if (e.target.checked) { var nx = nextAlarm(new Date()); if (nx) toast('Sonará ' + whenText(nx.date, new Date())); }
+  });
+  $('addAlarm').addEventListener('click', function () { openSheet(null); });
+  $('shCancel').addEventListener('click', closeSheet);
+  $('shSave').addEventListener('click', saveSheet);
+  $('shDelete').addEventListener('click', deleteAlarm);
+  $('sheet').addEventListener('click', function (e) { if (e.target === $('sheet')) closeSheet(); });
+  $('shDays').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (!b) return;
+    var d = +b.getAttribute('data-d'), i = editDays.indexOf(d);
+    if (i >= 0) editDays.splice(i, 1); else editDays.push(d);
+    renderDays();
+  });
+
+  $('toneList').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.tone') : null;
+    if (!b) return;
+    S.sound = b.getAttribute('data-v'); save(); renderSegs();
+    startPreview();
+  });
+  $('previewBtn').addEventListener('click', function () { if (previewing) stopPreview(); else startPreview(); });
+  $('snoozeSel').addEventListener('change', function () { S.snooze = parseInt(this.value, 10) || 9; save(); });
+  $('testBtn').addEventListener('click', function () {
+    testAt = Date.now() + 10000;
+    toast('Sonará en 10 segundos. Gira el iPhone si quieres verlo en reposo.');
+  });
+
+  function segHandler(key) {
+    return function (e) {
+      var b = e.target.closest ? e.target.closest('button') : null;
+      if (!b) return;
+      S[key] = b.getAttribute('data-v'); save();
+      if (key === 'light') {
+        if (S.light === 'auto') camStart(); else camStop();
+        applyTheme();
+      }
+      if (key === 'style') { metrics = null; lastText = ''; drawClock(true); }
+      renderSegs();
+    };
+  }
+  $('segLight').addEventListener('click', segHandler('light'));
+  $('segStyle').addEventListener('click', segHandler('style'));
+  $('thrRange').addEventListener('input', function () {
+    S.thr = parseInt(this.value, 10) || 10; save();
+    if (cam.level !== null) { cam.night = cam.level < S.thr; applyTheme(); }
+    renderLightLive();
+  });
+  $('nightFrom').addEventListener('change', function () { if (this.value) { S.nightFrom = this.value; save(); applyTheme(); } });
+  $('nightTo').addEventListener('change', function () { if (this.value) { S.nightTo = this.value; save(); applyTheme(); } });
+  $('h24').addEventListener('change', function () {
+    S.h24 = this.checked; save(); lastText = ''; drawClock(true); renderAll();
+  });
+  $('showTemp').addEventListener('change', function () {
+    S.showTemp = this.checked; save(); renderSide(); if (S.showTemp) fetchWeather(true);
+  });
+  $('locBtn').addEventListener('click', function () {
+    if (!navigator.geolocation) { toast('Este navegador no entrega la ubicación'); return; }
+    toast('Buscando ubicación…');
+    navigator.geolocation.getCurrentPosition(function (p) {
+      S.loc = { lat: p.coords.latitude, lon: p.coords.longitude, name: 'Mi ubicación' };
+      save(); renderSegs(); fetchWeather(true); toast('Ubicación guardada');
+    }, function () { toast('No se pudo obtener la ubicación'); }, { timeout: 15000, maximumAge: 3600000 });
+  });
+
+  $('rgSnooze').addEventListener('click', snooze);
+  $('rgStop').addEventListener('click', stopAll);
+
+  /* ---------- Ciclo principal ---------- */
+  function renderAll() { renderHeader(); renderSide(); renderStatus(); renderAlarms(); }
+  var lastMinute = -1;
+  function tick() {
+    var nowMs = Date.now();
+    checkAlarms(nowMs);
+    lastCheck = nowMs;
+    var now = new Date(nowMs);
+    if (ringing && nowMs - ringing.start > 15 * 60000) stopRing();
+    if (now.getMinutes() !== lastMinute) {
+      lastMinute = now.getMinutes();
+      renderHeader(); renderSide(); renderStatus(); updateRingTime();
+      fetchWeather(false);
+    }
+    applyTheme();
+    drawClock(false);
+    setTimeout(tick, 1000 - (Date.now() % 1000) + 15);
+  }
+
+  // Leve desplazamiento periódico para no dejar la imagen fija en la pantalla
+  setInterval(function () {
+    var x = Math.round((Math.random() - 0.5) * 12), y = Math.round((Math.random() - 0.5) * 10);
+    $('sbInner').style.transform = 'translate(' + x + 'px,' + y + 'px)';
+  }, 4 * 60000);
+
+  function onResize() {
+    document.documentElement.style.setProperty('--h', window.innerHeight + 'px');
+    if (resizeCanvas()) { lastText = ''; drawClock(true); }
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', function () { setTimeout(onResize, 250); setTimeout(onResize, 700); });
+  var mq = window.matchMedia ? window.matchMedia('(orientation: landscape)') : null;
+  if (mq) {
+    var mqf = function () { if (!mq.matches) document.body.classList.remove('show-settings'); setTimeout(onResize, 60); };
+    if (mq.addEventListener) mq.addEventListener('change', mqf); else if (mq.addListener) mq.addListener(mqf);
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible') return;
+    if (armed) startKeepAwake();
+    if (S.light === 'auto' && armed && !cam.stream) camStart();
+    lastText = ''; onResize();
+    fetchWeather(false);
+  });
+
+  // Estado inicial
+  document.body.classList.add('unarmed');
+  if (!(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches))) {
+    var inFrame = false; try { inFrame = window.self !== window.top; } catch (e) { inFrame = true; }
+    if (!inFrame && /iPhone|iPad|iPod/.test(navigator.userAgent)) $('stInstall').hidden = false;
+  }
+  applyTheme();
+  renderSegs();
+  renderAll();
+  onResize();
+  fetchWeather(true);
+  if (document.fonts && document.fonts.load) {
+    Promise.all([document.fonts.load('600 100px "Antonio"'), document.fonts.load('200 100px "Antonio"')])
+      .then(function () { metrics = null; lastText = ''; drawClock(true); })
+      .catch(function () { });
+  }
+  tick();
+
+  // Funciona sin conexión cuando está instalada
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    var top = true; try { top = window.self === window.top; } catch (e) { top = false; }
+    if (top) navigator.serviceWorker.register('sw.js').catch(function () { });
+  }
+})();
+</script>
+</body>
+</html>
