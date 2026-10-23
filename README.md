@@ -4,6 +4,7 @@ Reloj despertador de cabecera para iPhone al estilo del modo **En reposo**. Func
 
 - En horizontal muestra la hora en cifras grandes, el día, la temperatura y la próxima alarma.
 - En vertical muestra los ajustes: alarmas con días de repetición, tono, posponer, estilo del reloj y modo de luz.
+- En horizontal, deslizar el dedo hacia arriba aclara el reloj y hacia abajo lo oscurece (un nivel para el modo celeste y otro para el rojo). Deslizar hacia los lados cambia el estilo.
 - Celeste con luz y rojo en oscuridad. La luz se mide con la cámara frontal (o por horario, o fija).
 
 ## Instalación en el iPhone

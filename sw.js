@@ -1,6 +1,6 @@
 /* Reloj Reposo: guarda los archivos para que la app abra sin conexión.
    Primero intenta la red (así los cambios se ven de inmediato) y si falla usa la copia guardada. */
-var CACHE = 'reposo-v1-ds1';
+var CACHE = 'reposo-v2-ds1';
 var ASSETS = [
   './',
   'index.html',
