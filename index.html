@@ -101,6 +101,15 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 #sbLevel .bar i{position:absolute;left:0;right:0;bottom:0;height:100%;background:var(--digit)}
 #sbLevel b{font-size:calc(var(--h)*.05);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 
+/* Protección de pantalla: el reloj cambia de lugar de a poco */
+.sb-inner.flip{flex-direction:row-reverse}
+.sb-inner.flip .sb-side{padding-left:0;padding-right:2.5%;text-align:right}
+.sb-inner.flip .sb-alarm svg{margin-left:auto}
+body.flipped #arm{left:21%;right:2.5%}
+.sb-clock.beat{animation:beat 1.2s ease-out}
+@keyframes beat{0%{transform:scale(1)}14%{transform:scale(1.035)}28%{transform:scale(1)}42%{transform:scale(1.022)}62%,100%{transform:scale(1)}}
+.row-note{margin:8px 0 0;font-size:13px;line-height:1.45;color:var(--ui-fg2)}
+
 #arm{
   position:fixed;left:2.5%;right:21%;bottom:calc(var(--h)*.05);z-index:20;display:none;
   justify-content:center;pointer-events:none;
@@ -233,7 +242,7 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
 body.show-settings #standby{display:none}
 body.show-settings #settings{display:block}
 body.show-settings #arm{display:none}
-@media (prefers-reduced-motion:reduce){#rgTime{animation:none}.sb-inner{transition:none}}
+@media (prefers-reduced-motion:reduce){#rgTime{animation:none}.sb-inner{transition:none}.sb-clock.beat{animation:none}}
 </style>
 </head>
 <body class="unarmed">
@@ -332,6 +341,16 @@ body.show-settings #arm{display:none}
           <button type="button" data-v="redondo">Redondeado</button>
         </div>
       </div>
+      <div class="row col">
+        <span class="row-title">Protección de pantalla</span>
+        <div class="seg" data-key="guard" id="segGuard">
+          <button type="button" data-v="deriva">Deriva</button>
+          <button type="button" data-v="latido">Latido</button>
+          <button type="button" data-v="paseo">Paseo</button>
+          <button type="button" data-v="no">Fijo</button>
+        </div>
+        <p class="row-note" id="guardNote"></p>
+      </div>
       <label class="row" for="h24"><span class="lbl">Formato de 24 horas</span><span class="switch"><input type="checkbox" id="h24"><span></span></span></label>
       <label class="row" for="showTemp"><span class="lbl">Mostrar temperatura</span><span class="switch"><input type="checkbox" id="showTemp"><span></span></span></label>
       <div class="row"><span class="lbl">Ubicación <span class="val" id="locName">Santiago</span></span><button class="btn-pill" type="button" id="locBtn">Usar mi ubicación</button></div>
@@ -427,7 +446,14 @@ body.show-settings #arm{display:none}
     sound: 'amanecer', snooze: 9, style: 'clasico', h24: true, showTemp: true,
     light: 'auto', thr: 10, nightFrom: '22:00', nightTo: '07:00', loc: null,
     snoozeUntil: null, snoozeLabel: '',
-    dim: { day: 1, night: 1 }
+    dim: { day: 1, night: 1 },
+    guard: 'deriva'
+  };
+  var GUARD_NOTES = {
+    deriva: 'Cada 3 minutos el reloj se corre unos milímetros, tan despacio que no se nota.',
+    latido: 'El reloj late suavemente cada vez que cambia el minuto y, además, se corre unos milímetros cada 3 minutos.',
+    paseo: 'Cada 10 minutos el reloj sale por un lado y vuelve por el otro, con la hora y los datos cambiados de lado. Entre medio se corre como en Deriva.',
+    no: 'El reloj queda quieto.'
   };
   var S = load();
 
@@ -442,6 +468,7 @@ body.show-settings #arm{display:none}
     } catch (e) { /* sin almacenamiento: se usan valores por defecto */ }
     if (!SOUNDS[out.sound]) out.sound = 'amanecer';
     if (!STYLES[out.style]) out.style = 'clasico';
+    if (!GUARD_NOTES[out.guard]) out.guard = 'deriva';
     if (!out.dim || typeof out.dim !== 'object') out.dim = { day: 1, night: 1 };
     ['day', 'night'].forEach(function (k) {
       var v = Number(out.dim[k]);
@@ -928,7 +955,8 @@ body.show-settings #arm{display:none}
   }
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function renderSegs() {
-    [['segLight', S.light], ['segStyle', S.style]].forEach(function (p) {
+    $('guardNote').textContent = GUARD_NOTES[S.guard] + (guard && guard.demo ? ' Gira el iPhone para verlo una vez.' : '');
+    [['segLight', S.light], ['segStyle', S.style], ['segGuard', S.guard]].forEach(function (p) {
       var btns = $(p[0]).querySelectorAll('button');
       for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-v') === p[1]);
     });
@@ -1068,7 +1096,11 @@ body.show-settings #arm{display:none}
     sbTap();
   });
   $('sbGear').addEventListener('click', function () { document.body.classList.add('show-settings'); });
-  $('stDone').addEventListener('click', function () { document.body.classList.remove('show-settings'); setTimeout(onResize, 30); });
+  $('stDone').addEventListener('click', function () {
+    document.body.classList.remove('show-settings');
+    setTimeout(onResize, 30);
+    setTimeout(guardDemo, 120);
+  });
   $('arm').addEventListener('click', function () { arm(); });
   document.addEventListener('keydown', function (e) {
     if (!$('sheet').hidden || document.body.classList.contains('show-settings')) return;
@@ -1126,11 +1158,16 @@ body.show-settings #arm{display:none}
         applyTheme();
       }
       if (key === 'style') { metrics = null; lastText = ''; drawClock(true); }
+      if (key === 'guard') {
+        guard.demo = S.guard !== 'no';
+        if (S.guard === 'no') resetGuard();
+      }
       renderSegs();
     };
   }
   $('segLight').addEventListener('click', segHandler('light'));
   $('segStyle').addEventListener('click', segHandler('style'));
+  $('segGuard').addEventListener('click', segHandler('guard'));
   $('thrRange').addEventListener('input', function () {
     S.thr = parseInt(this.value, 10) || 10; save();
     if (cam.level !== null) { cam.night = cam.level < S.thr; applyTheme(); }
@@ -1156,6 +1193,76 @@ body.show-settings #arm{display:none}
   $('rgSnooze').addEventListener('click', snooze);
   $('rgStop').addEventListener('click', stopAll);
 
+  /* ---------- Protección de pantalla ---------- */
+  // Mueve el reloj de a poco para que ningún punto quede encendido siempre igual.
+  var guard = { x: 0, y: 0, flip: false, busy: false, min: 0, demo: false };
+  var reduceMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  function standbyShown() { return getComputedStyle($('standby')).display !== 'none'; }
+  function moveInner(x, y, dur, ease) {
+    var el = $('sbInner');
+    if (reduceMotion && reduceMotion.matches) dur = 0;
+    el.style.transition = 'transform ' + dur + 's ' + (ease || 'ease-in-out') + ',opacity .6s ease';
+    el.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+    guard.x = x; guard.y = y;
+  }
+  function randomSpot() {
+    var w = window.innerWidth, h = window.innerHeight, x, y, tries = 0;
+    do {
+      x = (Math.random() * 2 - 1) * w * 0.02;
+      y = (Math.random() * 2 - 1) * h * 0.08;
+    } while (Math.abs(x - guard.x) + Math.abs(y - guard.y) < h * 0.04 && ++tries < 8);
+    return { x: x, y: y };
+  }
+  function drift(dur) { var p = randomSpot(); moveInner(p.x, p.y, dur, 'ease-in-out'); }
+  function beat() {
+    var c = document.querySelector('.sb-clock');
+    c.classList.remove('beat');
+    void c.offsetWidth;
+    c.classList.add('beat');
+  }
+  function walk() {
+    if (guard.busy) return;
+    guard.busy = true;
+    var out = (guard.flip ? 1 : -1) * window.innerWidth * 1.05;
+    moveInner(out, guard.y, 1.6, 'ease-in');
+    setTimeout(function () {
+      guard.flip = !guard.flip;
+      $('sbInner').classList.toggle('flip', guard.flip);
+      document.body.classList.toggle('flipped', guard.flip);
+      moveInner(-out, guard.y, 0);
+      void $('sbInner').offsetWidth;
+      setTimeout(function () {
+        var p = randomSpot();
+        moveInner(p.x, p.y, 1.6, 'ease-out');
+        setTimeout(function () { guard.busy = false; }, 1700);
+      }, 40);
+    }, 1700);
+  }
+  function resetGuard() {
+    guard.flip = false;
+    $('sbInner').classList.remove('flip');
+    document.body.classList.remove('flipped');
+    moveInner(0, 0, 0);
+  }
+  function guardTick() {
+    guard.min++;
+    if (S.guard === 'no' || ringing || !standbyShown()) return;
+    if (S.guard === 'latido') beat();
+    if (S.guard === 'paseo' && guard.min % 10 === 0) { walk(); return; }
+    if (guard.min % 3 === 0) drift(30);
+  }
+  // Al elegir una opción se muestra una vez al volver al modo reposo
+  function guardDemo() {
+    if (!guard.demo || !standbyShown() || ringing) return;
+    guard.demo = false;
+    renderSegs();
+    setTimeout(function () {
+      if (S.guard === 'latido') beat();
+      else if (S.guard === 'paseo') walk();
+      else if (S.guard === 'deriva') drift(4);
+    }, 1200);
+  }
+
   /* ---------- Ciclo principal ---------- */
   function renderAll() { renderHeader(); renderSide(); renderStatus(); renderAlarms(); }
   var lastMinute = -1;
@@ -1169,17 +1276,12 @@ body.show-settings #arm{display:none}
       lastMinute = now.getMinutes();
       renderHeader(); renderSide(); renderStatus(); updateRingTime();
       fetchWeather(false);
+      guardTick();
     }
     applyTheme();
     drawClock(false);
     setTimeout(tick, 1000 - (Date.now() % 1000) + 15);
   }
-
-  // Leve desplazamiento periódico para no dejar la imagen fija en la pantalla
-  setInterval(function () {
-    var x = Math.round((Math.random() - 0.5) * 12), y = Math.round((Math.random() - 0.5) * 10);
-    $('sbInner').style.transform = 'translate(' + x + 'px,' + y + 'px)';
-  }, 4 * 60000);
 
   function onResize() {
     document.documentElement.style.setProperty('--h', window.innerHeight + 'px');
@@ -1189,7 +1291,11 @@ body.show-settings #arm{display:none}
   window.addEventListener('orientationchange', function () { setTimeout(onResize, 250); setTimeout(onResize, 700); });
   var mq = window.matchMedia ? window.matchMedia('(orientation: landscape)') : null;
   if (mq) {
-    var mqf = function () { if (!mq.matches) document.body.classList.remove('show-settings'); setTimeout(onResize, 60); };
+    var mqf = function () {
+      if (!mq.matches) document.body.classList.remove('show-settings');
+      setTimeout(onResize, 60);
+      setTimeout(guardDemo, 300);
+    };
     if (mq.addEventListener) mq.addEventListener('change', mqf); else if (mq.addListener) mq.addListener(mqf);
   }
   document.addEventListener('visibilitychange', function () {
