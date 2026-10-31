@@ -244,6 +244,7 @@ body.show-settings #settings{display:block}
 body.show-settings #arm{display:none}
 @media (prefers-reduced-motion:reduce){#rgTime{animation:none}.sb-inner{transition:none}.sb-clock.beat{animation:none}}
 </style>
+<style>/* Sin zoom con los dedos ni con doble toque: se usa como app instalada, no como página */ html { touch-action: pan-x pan-y; }</style>
 </head>
 <body class="unarmed">
 
@@ -1329,6 +1330,13 @@ body.show-settings #arm{display:none}
     var top = true; try { top = window.self === window.top; } catch (e) { top = false; }
     if (top) navigator.serviceWorker.register('sw.js').catch(function () { });
   }
+})();
+</script>
+<script>
+// Sin zoom con los dedos: Safari en iPhone no siempre respeta «user-scalable=no», así que se cortan sus gestos de zoom
+(function () {
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) { document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false }); });
+  document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
 })();
 </script>
 </body>
