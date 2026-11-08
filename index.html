@@ -206,8 +206,12 @@ input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radiu
 .sheet-bar b{font-size:17px;font-weight:600}
 .sheet-bar button{border:0;background:transparent;color:var(--acc);font-size:17px;padding:8px 0}
 #shSave{font-weight:700}
-#shTime{display:block;width:100%;border:0;border-radius:12px;background:var(--card2);color:var(--ui-fg);font-family:var(--font-clock);font-weight:200;font-size:58px;line-height:1.1;text-align:center;padding:10px 0;-webkit-appearance:none;appearance:none}
-#shTime::-webkit-date-and-time-value{text-align:center}
+.tstep{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 0;border-radius:12px;background:var(--card2)}
+.tcol{display:flex;flex-direction:column;align-items:center;gap:4px;width:120px}
+.tcol button{width:100%;height:44px;border:0;border-radius:10px;background:transparent;color:var(--acc);font-size:26px;font-weight:600;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.tcol button:active{background:var(--card)}
+.tval{font-family:var(--font-clock);font-weight:200;font-size:72px;line-height:1.05;color:var(--ui-fg);font-variant-numeric:tabular-nums}
+.tsep{font-family:var(--font-clock);font-weight:200;font-size:60px;line-height:1;color:var(--ui-fg2);margin-bottom:8px}
 .days{display:flex;justify-content:space-between;gap:6px;margin:18px 0 6px}
 .days button{width:42px;height:42px;border:0;border-radius:50%;background:var(--card2);color:var(--ui-fg);font-size:15px;font-weight:700}
 .days button.on{background:var(--acc);color:var(--on-acc)}
@@ -378,7 +382,19 @@ body.show-settings #arm{display:none}
       <b id="shTitle">Editar alarma</b>
       <button type="button" id="shSave">Guardar</button>
     </div>
-    <input type="time" id="shTime" value="06:30" aria-label="Hora de la alarma">
+    <div class="tstep" role="group" aria-label="Hora de la alarma">
+      <div class="tcol">
+        <button type="button" id="shHUp" aria-label="Subir hora">&#9650;</button>
+        <span class="tval" id="shHVal">06</span>
+        <button type="button" id="shHDown" aria-label="Bajar hora">&#9660;</button>
+      </div>
+      <span class="tsep" aria-hidden="true">:</span>
+      <div class="tcol">
+        <button type="button" id="shMUp" aria-label="Subir minutos">&#9650;</button>
+        <span class="tval" id="shMVal">30</span>
+        <button type="button" id="shMDown" aria-label="Bajar minutos">&#9660;</button>
+      </div>
+    </div>
     <div class="days" id="shDays">
       <button type="button" data-d="1" aria-label="Lunes">L</button>
       <button type="button" data-d="2" aria-label="Martes">M</button>
@@ -1007,7 +1023,7 @@ body.show-settings #arm{display:none}
     for (var i = 0; i < S.alarms.length; i++) if (S.alarms[i].id === id) a = S.alarms[i];
     editing = a ? a.id : null;
     $('shTitle').textContent = a ? 'Editar alarma' : 'Nueva alarma';
-    $('shTime').value = a ? pad(a.h) + ':' + pad(a.m) : '07:00';
+    setSheetTime(a ? a.h : 7, a ? a.m : 0);
     editDays = a ? (a.days || []).slice() : [1, 2, 3, 4, 5];
     $('shLabel').value = a ? (a.label || '') : '';
     $('shDelete').hidden = !a;
@@ -1020,10 +1036,39 @@ body.show-settings #arm{display:none}
     for (var i = 0; i < b.length; i++) b[i].classList.toggle('on', editDays.indexOf(+b[i].getAttribute('data-d')) >= 0);
     $('shDaysHint').textContent = daysSummary(editDays);
   }
+  // Hora de la hoja de edición. Al pasar minutos de 59 a 00 la hora sube una, y de 00 a 59 baja una.
+  var sheetH = 7, sheetM = 0, stepTimer = null;
+  function setSheetTime(h, m) {
+    sheetH = ((h % 24) + 24) % 24;
+    sheetM = ((m % 60) + 60) % 60;
+    $('shHVal').textContent = pad(sheetH);
+    $('shMVal').textContent = pad(sheetM);
+  }
+  function stepMinute(d) {
+    var m = sheetM + d;
+    if (m > 59) { m = 0; sheetH = (sheetH + 1) % 24; }
+    if (m < 0) { m = 59; sheetH = (sheetH + 23) % 24; }
+    setSheetTime(sheetH, m);
+  }
+  function stepHour(d) { setSheetTime(sheetH + d, sheetM); }
+  // Mantener presionado repite el paso
+  function holdable(btn, fn) {
+    var first = null, rep = null;
+    var stop = function () { clearTimeout(first); clearInterval(rep); first = rep = null; };
+    btn.addEventListener('touchstart', function (e) { e.preventDefault(); fn(); first = setTimeout(function () { rep = setInterval(fn, 90); }, 380); }, { passive: false });
+    btn.addEventListener('touchend', stop);
+    btn.addEventListener('touchcancel', stop);
+    btn.addEventListener('mouseleave', stop);
+    btn.addEventListener('mousedown', function () { fn(); first = setTimeout(function () { rep = setInterval(fn, 90); }, 380); });
+    btn.addEventListener('mouseup', stop);
+    btn.addEventListener('click', function (e) { if (e.detail === 0) fn(); });
+  }
+  holdable($('shMUp'), function () { stepMinute(1); });
+  holdable($('shMDown'), function () { stepMinute(-1); });
+  holdable($('shHUp'), function () { stepHour(1); });
+  holdable($('shHDown'), function () { stepHour(-1); });
   function saveSheet() {
-    var v = $('shTime').value || '07:00';
-    var p = v.split(':');
-    var h = Math.min(23, parseInt(p[0], 10) || 0), m = Math.min(59, parseInt(p[1], 10) || 0);
+    var h = sheetH, m = sheetM;
     var label = $('shLabel').value.trim();
     if (editing) {
       S.alarms.forEach(function (a) { if (a.id === editing) { a.h = h; a.m = m; a.days = editDays.slice(); a.label = label; a.on = true; } });
