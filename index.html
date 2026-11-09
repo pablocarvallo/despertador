@@ -587,6 +587,15 @@ body.listening #sbEnd{ display: block; }
 #sbEnd i{ position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: -1; background: var(--acc); opacity: .35; transform: scaleX(0); transform-origin: left center; transition: transform .25s ease; }
 #sbEnd.hold i{ transform: scaleX(1); transition: transform 1.3s linear; }
 </style>
+<style>
+.master .row{padding-top:12px;padding-bottom:12px}
+.master .lbl b{display:block;font-size:19px;font-weight:600}
+.master .lbl small{display:block;margin-top:2px;font-size:14px;line-height:1.35;color:var(--ui-fg2)}
+.sb-alarm{cursor:pointer}
+.sb-alarm.off{opacity:.5}
+.sb-alarm.off svg{color:var(--fg2)}
+.sb-alarm.off #sbAlarmTime{color:var(--fg2)}
+</style>
 </head>
 <body class="unarmed">
 
@@ -640,6 +649,9 @@ body.listening #sbEnd{ display: block; }
     </div>
 
     <div id="paneAlarm">
+    <div class="group master">
+      <label class="row" for="alarmMaster"><span class="lbl"><b>Alarma</b><small id="masterNote"></small></span><span class="switch"><input type="checkbox" id="alarmMaster"><span></span></span></label>
+    </div>
     <h2>Alarmas</h2>
     <div class="group" id="alarmList"></div>
     <div class="group" style="margin-top:10px">
@@ -660,8 +672,9 @@ body.listening #sbEnd{ display: block; }
         </select>
       </label>
       <div class="row"><span class="lbl">Probar el despertador</span><button class="btn-pill" type="button" id="testBtn">Sonar en 10 s</button></div>
+      <div class="row"><span class="lbl">Probar con la pantalla bloqueada</span><button class="btn-pill" type="button" id="testLockBtn">Sonar en 30 s</button></div>
     </div>
-    <p class="foot">La alarma empieza suave y sube en 15 segundos. Usa el volumen multimedia: mientras suena el tono, ajusta el volumen con los botones laterales. Pruébala también con el interruptor de silencio activado.</p>
+    <p class="foot">La alarma empieza suave y sube en 15 segundos. Usa el volumen multimedia: mientras suena el tono, ajusta el volumen con los botones laterales. Pruébala también con el interruptor de silencio activado. Con alarmas activas la app mantiene un audio silencioso en marcha para poder sonar con la pantalla bloqueada: toca la pantalla una vez al abrir la app, no la cierres deslizándola, y comprueba con «Sonar en 30 s» bloqueando el iPhone.</p>
 
     <h2>Luz ambiente</h2>
     <div class="group">
@@ -855,6 +868,7 @@ body.listening #sbEnd{ display: block; }
 <video id="keepAwake" class="hidden-media" src="keepawake.mp4" muted loop playsinline webkit-playsinline preload="auto"></video>
 <video id="camVideo" class="hidden-media" muted playsinline webkit-playsinline></video>
 <audio id="alarmAudio" preload="auto"></audio>
+<audio id="keepAudio" loop playsinline webkit-playsinline preload="auto"></audio>
 
 <script>
 (function () {
@@ -895,7 +909,8 @@ body.listening #sbEnd{ display: block; }
     snoozeUntil: null, snoozeLabel: '',
     dim: { day: 1, night: 1 },
     guard: 'deriva',
-    tab: 'alarma'
+    tab: 'alarma',
+    alarmOn: true
   };
   var GUARD_NOTES = {
     deriva: 'Cada 3 minutos el reloj se corre unos milímetros, tan despacio que no se nota.',
@@ -918,6 +933,7 @@ body.listening #sbEnd{ display: block; }
     if (!STYLES[out.style]) out.style = 'clasico';
     if (!GUARD_NOTES[out.guard]) out.guard = 'deriva';
     if (out.tab !== 'rq') out.tab = 'alarma';
+    out.alarmOn = out.alarmOn !== false;
     if (!out.dim || typeof out.dim !== 'object') out.dim = { day: 1, night: 1 };
     ['day', 'night'].forEach(function (k) {
       var v = Number(out.dim[k]);
@@ -925,6 +941,7 @@ body.listening #sbEnd{ display: block; }
     });
     return out;
   }
+  function alarmsOn() { return S.alarmOn !== false; }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { }
   }
@@ -1226,6 +1243,7 @@ body.listening #sbEnd{ display: block; }
     else ok();
     startKeepAwake();
     camStart();
+    syncKeepAudio(true);
   }
   function startKeepAwake() {
     var v = $('keepAwake');
@@ -1310,7 +1328,7 @@ body.listening #sbEnd{ display: block; }
     var now = new Date(nowMs);
     var fired = null;
     S.alarms.forEach(function (a) {
-      if (!a.on || fired) return;
+      if (!alarmsOn() || !a.on || fired) return;
       for (var i = 0; i >= -1; i--) {
         var d = occurrenceOn(a, now, i);
         if (!d) continue;
@@ -1366,12 +1384,20 @@ body.listening #sbEnd{ display: block; }
     $('sbNum').textContent = now.getDate();
     $('sbTemp').textContent = (S.showTemp && weather.temp !== null) ? weather.temp + '°' : '';
     var el = $('sbAlarm'), note = $('sbAlarmNote'), tEl = $('sbAlarmTime');
-    var target = null, snoozed = false;
-    if (S.snoozeUntil && S.snoozeUntil > now.getTime()) { target = new Date(S.snoozeUntil); snoozed = true; }
+    var target = null, snoozed = false, off = !alarmsOn();
+    if (off) {
+      // Apagada: se muestra siempre (aunque la próxima esté lejos) para que no pase inadvertido
+      var nx0 = nextAlarm(now);
+      if (!S.alarms.length) { el.hidden = true; return; }
+      target = nx0 ? nx0.date : null;
+    } else if (S.snoozeUntil && S.snoozeUntil > now.getTime()) { target = new Date(S.snoozeUntil); snoozed = true; }
     else { var nx = nextAlarm(now); if (nx && nx.date - now < 24 * 3600000) target = nx.date; }
-    if (!target) { el.hidden = true; return; }
+    if (!target && !off) { el.hidden = true; return; }
     el.hidden = false;
-    note.hidden = !snoozed;
+    el.className = 'sb-alarm tr' + (off ? ' off' : '');
+    note.hidden = !(snoozed || off);
+    note.textContent = off ? 'Apagada' : 'Pospuesta';
+    if (!target) { tEl.textContent = '--:--'; return; }
     var h = target.getHours(), m = target.getMinutes();
     if (S.h24) tEl.textContent = pad(h) + ':' + pad(m);
     else tEl.innerHTML = ((h % 12) || 12) + ':' + pad(m) + '<span class="ampm">' + (h < 12 ? 'AM' : 'PM') + '</span>';
@@ -1385,10 +1411,17 @@ body.listening #sbEnd{ display: block; }
     var now = new Date(), dot = $('stDot'), txt;
     var nx = nextAlarm(now);
     if (!armed) { dot.className = 'dot warn'; txt = 'Toca cualquier parte de la pantalla para activar el sonido de la alarma.'; }
+    else if (!alarmsOn()) { dot.className = 'dot off'; txt = 'Alarma apagada: no sonará ninguna alarma.'; }
     else if (S.snoozeUntil && S.snoozeUntil > now.getTime()) { dot.className = 'dot'; txt = 'Alarma pospuesta hasta las ' + fmtTime(new Date(S.snoozeUntil).getHours(), new Date(S.snoozeUntil).getMinutes(), true) + '.'; }
     else if (nx) { dot.className = 'dot'; txt = 'Despertador listo. Próxima alarma ' + whenText(nx.date, now) + '.'; }
     else { dot.className = 'dot off'; txt = 'Despertador listo, pero no hay alarmas activas.'; }
     $('stStatus').textContent = txt;
+    renderMaster();
+  }
+  function renderMaster() {
+    var on = alarmsOn(), note = $('masterNote'), nx = nextAlarm(new Date());
+    $('alarmMaster').checked = on;
+    note.textContent = !on ? 'Apagada: no sonará ninguna alarma.' : nx ? 'Activada. Próxima ' + whenText(nx.date, new Date()) + '.' : 'Activada. No hay alarmas programadas.';
   }
   function renderAlarms() {
     var list = $('alarmList');
@@ -1513,14 +1546,15 @@ body.listening #sbEnd{ display: block; }
     } else {
       S.alarms.push({ id: 'a' + Date.now(), h: h, m: m, days: editDays.slice(), on: true, label: label });
     }
-    save(); closeSheet(); renderAlarms(); renderSide(); renderStatus();
+    S.alarmOn = true; // agregar o cambiar una alarma vuelve a activar el interruptor general
+    save(); closeSheet(); renderAlarms(); renderSide(); renderStatus(); syncKeepAudio();
     var nx = nextAlarm(new Date());
     if (nx) toast('Sonará ' + whenText(nx.date, new Date()));
   }
   function deleteAlarm() {
     if (!editing) return;
     S.alarms = S.alarms.filter(function (a) { return a.id !== editing; });
-    save(); closeSheet(); renderAlarms(); renderSide(); renderStatus();
+    save(); closeSheet(); renderAlarms(); renderSide(); renderStatus(); syncKeepAudio();
   }
 
   /* ---------- Eventos ---------- */
@@ -1566,7 +1600,7 @@ body.listening #sbEnd{ display: block; }
     var t = e.changedTouches[0], dx = t.clientX - drag.x, dy = t.clientY - drag.y, mode = drag.mode;
     drag = null;
     if (mode === 'dim') { save(); applyDim(false); return; }
-    if (e.target.closest && e.target.closest('#sbGear, #sbEnd')) return;
+    if (e.target.closest && e.target.closest('#sbGear, #sbEnd, #sbAlarm')) return;
     if (mode === 'side' && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) cycleStyle(dx < 0 ? 1 : -1);
     else if (!mode) sbTap();
   });
@@ -1576,10 +1610,18 @@ body.listening #sbEnd{ display: block; }
   });
   sb.addEventListener('click', function (e) {
     if (Date.now() - lastTouch < 700) return;
-    if (e.target.closest && e.target.closest('#sbGear, #sbEnd')) return;
+    if (e.target.closest && e.target.closest('#sbGear, #sbEnd, #sbAlarm')) return;
     sbTap();
   });
   $('sbGear').addEventListener('click', function () { document.body.classList.add('show-settings'); });
+  // Interruptor de la alarma en el reloj: encender es directo; apagar pide tocar dos veces (para no apagarla sin querer de noche)
+  var offArm = 0;
+  $('sbAlarm').addEventListener('click', function () {
+    if (!alarmsOn()) { setAlarmOn(true); return; }
+    if (Date.now() < offArm) { offArm = 0; setAlarmOn(false); return; }
+    offArm = Date.now() + 3500;
+    toast('Toca otra vez para apagar la alarma');
+  });
   $('stDone').addEventListener('click', function () {
     document.body.classList.remove('show-settings');
     setTimeout(onResize, 30);
@@ -1603,7 +1645,8 @@ body.listening #sbEnd{ display: block; }
     var id = e.target.getAttribute('data-toggle');
     if (!id) return;
     S.alarms.forEach(function (a) { if (a.id === id) a.on = e.target.checked; });
-    save(); renderAlarms(); renderSide(); renderStatus();
+    if (e.target.checked) S.alarmOn = true;
+    save(); renderAlarms(); renderSide(); renderStatus(); syncKeepAudio();
     if (e.target.checked) { var nx = nextAlarm(new Date()); if (nx) toast('Sonará ' + whenText(nx.date, new Date())); }
   });
   $('addAlarm').addEventListener('click', function () { openSheet(null); });
@@ -1627,6 +1670,12 @@ body.listening #sbEnd{ display: block; }
   });
   $('previewBtn').addEventListener('click', function () { if (previewing) stopPreview(); else startPreview(); });
   $('snoozeSel').addEventListener('change', function () { S.snooze = parseInt(this.value, 10) || 9; save(); });
+  $('alarmMaster').addEventListener('change', function () { setAlarmOn(this.checked); });
+  $('testLockBtn').addEventListener('click', function () {
+    testAt = Date.now() + 30000;
+    syncKeepAudio(true);
+    toast('Sonará en 30 segundos. Bloquea el iPhone ahora con el botón lateral.');
+  });
   $('testBtn').addEventListener('click', function () {
     testAt = Date.now() + 10000;
     toast('Sonará en 10 segundos. Gira el iPhone si quieres verlo en reposo.');
@@ -1754,9 +1803,82 @@ body.listening #sbEnd{ display: block; }
     }, 1200);
   }
 
+  /* ---------- Interruptor general de la alarma ---------- */
+  function setAlarmOn(on) {
+    S.alarmOn = !!on;
+    if (!on) { S.snoozeUntil = null; S.snoozeLabel = ''; }
+    save();
+    renderSide(); renderStatus(); renderAlarms();
+    syncKeepAudio();
+    if (on) { var nx = nextAlarm(new Date()); toast(nx ? 'Alarma activada. Sonará ' + whenText(nx.date, new Date()) : 'Alarma activada. No hay alarmas programadas'); }
+    else toast('Alarma apagada. No sonará ninguna alarma');
+  }
+
+  /* ---------- Audio de respaldo para pantalla bloqueada ---------- */
+  // iOS suspende las páginas web al bloquear la pantalla, salvo las que están reproduciendo audio. Mientras haya una
+  // alarma pendiente se reproduce en bucle un audio silencioso para que la app siga viva y la alarma pueda sonar.
+  var keepAudio = $('keepAudio'), keepOn = false, keepUrl = null, keepText = '';
+  function silentWavUrl() {
+    if (keepUrl) return keepUrl;
+    var n = 8000, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+    function s(o, t) { for (var i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }
+    s(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); s(8, 'WAVE'); s(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    s(36, 'data'); v.setUint32(40, n * 2, true);
+    keepUrl = URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+    return keepUrl;
+  }
+  function keepWanted(force) {
+    if (!(armed || force)) return false;
+    if (testAt) return true;
+    if (!alarmsOn()) return false;
+    if (S.snoozeUntil) return true;
+    for (var i = 0; i < S.alarms.length; i++) if (S.alarms[i].on) return true;
+    return false;
+  }
+  function mediaInfo(on) {
+    var ms = navigator.mediaSession;
+    if (!ms) return;
+    try {
+      if (on) {
+        var t = nextAlarmText() || 'Reposo';
+        if (t === keepText && ms.playbackState === 'playing') return;
+        keepText = t;
+        if (window.MediaMetadata) ms.metadata = new MediaMetadata({ title: 'Despertador activo', artist: t });
+        ms.playbackState = 'playing';
+        ['pause', 'stop'].forEach(function (a) {
+          try { ms.setActionHandler(a, function () { var p = keepAudio.play(); if (p && p.catch) p.catch(function () { }); }); } catch (e) { }
+        });
+      } else {
+        keepText = '';
+        ms.playbackState = 'none';
+        ms.metadata = null;
+      }
+    } catch (e) { }
+  }
+  function syncKeepAudio(force) {
+    var want = keepWanted(force);
+    if (want) {
+      if (!keepOn || keepAudio.paused) {
+        if (!keepAudio.src || keepAudio.src.indexOf('blob:') !== 0) keepAudio.src = silentWavUrl();
+        keepAudio.loop = true;
+        keepOn = true;
+        var p = keepAudio.play();
+        if (p && p.catch) p.catch(function () { keepOn = false; });
+      }
+      mediaInfo(true);
+    } else if (keepOn) {
+      keepOn = false;
+      try { keepAudio.pause(); } catch (e) { }
+      mediaInfo(false);
+    }
+  }
+
   /* ---------- Conexión con Ronquidos ---------- */
   function nextAlarmText() {
     var now = new Date(), target = null, snoozed = false;
+    if (!alarmsOn()) return S.alarms.length ? 'Alarma apagada' : '';
     if (S.snoozeUntil && S.snoozeUntil > now.getTime()) { target = new Date(S.snoozeUntil); snoozed = true; }
     else { var nx = nextAlarm(now); if (nx && nx.date - now < 24 * 3600000) target = nx.date; }
     if (!target) return '';
@@ -1778,6 +1900,7 @@ body.listening #sbEnd{ display: block; }
     var nowMs = Date.now();
     checkAlarms(nowMs);
     lastCheck = nowMs;
+    syncKeepAudio();
     var now = new Date(nowMs);
     if (ringing && nowMs - ringing.start > 15 * 60000) stopRing();
     if (now.getMinutes() !== lastMinute) {
@@ -1809,6 +1932,7 @@ body.listening #sbEnd{ display: block; }
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') return;
     if (armed) startKeepAwake();
+    syncKeepAudio();
     if (S.light === 'auto' && armed && !cam.stream) camStart();
     lastText = ''; onResize();
     fetchWeather(false);
