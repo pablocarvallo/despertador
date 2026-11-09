@@ -249,6 +249,344 @@ body.show-settings #arm{display:none}
 @media (prefers-reduced-motion:reduce){#rgTime{animation:none}.sb-inner{transition:none}.sb-clock.beat{animation:none}}
 </style>
 <style>/* Sin zoom con los dedos ni con doble toque: se usa como app instalada, no como página */ html { touch-action: pan-x pan-y; }</style>
+<style>
+
+/* ── Ronquidos integrado: variables del sistema común conectadas a la paleta del reloj (celeste con luz, rojo en oscuridad) ── */
+.rq{
+  --ds-font: -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --ds-font-display: -apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --ds-font-round: ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --ds-r-card: 24px; --ds-r-inner: 16px; --ds-r-field: 14px; --ds-r-sheet: 34px; --ds-r-pill: 999px;
+  --ds-bg: var(--bg); --ds-surface: var(--card); --ds-surface-2: var(--card2);
+  --ds-fill: var(--card2); --ds-fill-2: var(--sep);
+  --ds-ink: var(--ui-fg); --ds-ink-2: var(--ui-fg2); --ds-ink-3: #6B7890;
+  --ds-line: var(--sep); --ds-line-2: var(--sep);
+  --ds-tint: var(--acc); --ds-tint-soft: var(--card2);
+  --ds-btn: var(--acc); --ds-on-btn: var(--on-acc); --ds-b1: var(--acc);
+  --ds-pos: #5DD68E; --ds-pos-soft: rgba(93,214,142,.14);
+  --ds-neg: var(--danger); --ds-neg-soft: rgba(255,97,89,.14);
+  --ds-warn: #F2A33A; --ds-warn-soft: rgba(242,163,58,.14);
+  --ds-hero: linear-gradient(150deg, var(--card2) 0%, var(--card) 100%);
+  --ds-hero-ink: var(--ui-fg); --ds-hero-ink-2: var(--ui-fg2); --ds-hero-line: var(--sep); --ds-hero-glass: rgba(255,255,255,.06);
+  --ds-glass: var(--card2); --ds-glass-strong: var(--card2); --ds-glass-line: var(--sep); --ds-glass-blur: none;
+  --ds-shadow-1: none; --ds-shadow-2: 0 10px 30px rgba(0,0,0,.6); --ds-shadow-btn: none;
+  --ds-scrim: rgba(0,0,0,.62);
+  --chart: var(--acc); --seg-on: var(--acc);
+  --nt-1: var(--digit); --nt-2: var(--fg2); --nt-3: var(--sep); --nt-rec: #B5655B;
+  font-family: var(--ds-font); color: var(--ds-ink);
+}
+.night .rq{ --ds-ink-3: #7A4F4A; --ds-pos: #9BB59D; --ds-warn: #D68B3A; }
+
+/* ── Ronquidos ── */
+.rq *, .rq *::before, .rq *::after{ box-sizing: border-box; }
+
+.rq [hidden]{ display: none !important; }
+.rq{font-size: 17px; line-height: 1.38; letter-spacing: -0.012em; -webkit-text-size-adjust: 100%;}
+/* Sin zoom: ni con dos dedos ni con doble toque (Safari ignora user-scalable; el bloqueo real está en el script) */
+
+.rq button, .rq a, .rq input, .rq label, .rq .row, .rq .seg, .rq .sw{ touch-action: manipulation; }
+.rq .app{ max-width: 480px; margin: 0 auto; padding-block: 14px 48px; display: flex; flex-direction: column; gap: 22px; }
+.rq button, .rq input, .rq textarea{ font: inherit; color: inherit; letter-spacing: inherit; }
+.rq button{ cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.rq svg{ display: block; flex: none; }
+.rq h1, .rq h2, .rq h3{ margin: 0; text-wrap: balance; }
+.rq .eyebrow{ margin: 0; font-size: 13px; font-weight: 600; color: var(--ds-ink-2); letter-spacing: -0.005em; }
+.rq :focus-visible{ outline: 3px solid var(--ds-tint); outline-offset: 2px; }
+.rq .num{ font-variant-numeric: tabular-nums; }
+.rq .ico{ width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rq .ico.fill{ fill: currentColor; stroke: none; }
+
+/* Encabezado: icono + fecha + título grande, y el botón de ajustes */
+.rq .top{ display: flex; align-items: center; gap: 12px; padding-top: 6px; }
+.rq .top .app-icon{ width: 46px; height: 46px; flex: none; }
+.rq .top-txt{ flex: 1; min-width: 0; }
+.rq .top h1{ font-size: clamp(27px, 8.6vw, 34px); line-height: 1.08; font-weight: 700; letter-spacing: -0.03em; }
+.rq .round-btn{
+  width: 44px; height: 44px; flex: none; display: grid; place-items: center; padding: 0; border: 0.5px solid var(--ds-glass-line); border-radius: 50%;
+  background: var(--ds-glass); color: var(--ds-tint); box-shadow: var(--ds-shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: var(--ds-glass-blur); backdrop-filter: var(--ds-glass-blur); transition: transform 0.16s ease;
+}
+.rq .round-btn:active{ transform: scale(0.94); }
+
+/* Botones en cápsula */
+.rq .btn{
+  min-height: 50px; padding: 0 20px; border: 0; border-radius: var(--ds-r-pill);
+  font-size: 17px; font-weight: 600; letter-spacing: -0.01em;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform 0.16s ease, opacity 0.16s ease, background-color 0.16s ease;
+}
+.rq .btn:active{ transform: scale(0.97); opacity: 0.88; }
+.rq .btn.primary{ background: var(--ds-btn); color: var(--ds-on-btn); box-shadow: var(--ds-shadow-btn); }
+.rq .btn.tonal{ background: var(--ds-tint-soft); color: var(--ds-tint); }
+.rq .btn.ghost{ background: var(--ds-surface); color: var(--ds-tint); box-shadow: var(--ds-shadow-1); }
+.rq .btn.danger{ background: var(--ds-neg-soft); color: var(--ds-neg); }
+.rq .btn.danger.armed{ background: var(--ds-neg); color: #fff; }
+.rq .btn.small{ min-height: 38px; padding: 0 16px; font-size: 15px; }
+.rq .btn.block{ width: 100%; }
+.rq .btn.big{ min-height: 58px; font-size: 18px; }
+.rq .btn .ico{ width: 21px; height: 21px; }
+
+/* Tarjeta principal: la última noche */
+.rq .hero{
+  position: relative; overflow: hidden; isolation: isolate;
+  border-radius: 28px; padding: 18px 20px 20px; background: var(--ds-hero); color: var(--ds-hero-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), inset 0 -1px 0 rgba(14, 27, 51, 0.16), 0 16px 34px rgba(41, 80, 244, 0.26);
+}
+.rq .hero::after{ content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 38%); }
+.rq .hero-art{ position: absolute; right: -22px; bottom: -34px; z-index: -1; width: 168px; height: 168px; opacity: 0.13; color: #fff; }
+.rq .hero .eyebrow{ font-size: 15px; color: var(--ds-hero-ink-2); }
+.rq .count-big{ margin-top: 6px; font-family: var(--ds-font-round); font-weight: 700; font-size: 52px; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.rq .count-big span{ margin-left: 8px; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; color: var(--ds-hero-ink-2); }
+.rq .count-big.ok{ font-size: 38px; }
+.rq .hero-sub{ margin: 8px 0 0; font-size: 16px; color: var(--ds-hero-ink-2); }
+.rq .hero-title{ margin: 6px 0 0; font-family: var(--ds-font-display); font-size: 30px; font-weight: 700; line-height: 1.1; letter-spacing: -0.03em; }
+.rq .hero-txt{ margin: 10px 0 0; font-size: 16px; line-height: 1.4; color: var(--ds-hero-ink-2); max-width: 34em; }
+.rq .chips{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.rq .chips span{ display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 12px; border-radius: var(--ds-r-pill);
+  background: var(--ds-hero-glass); border: 0.5px solid var(--ds-hero-line); font-size: 14px; color: var(--ds-hero-ink-2); }
+.rq .chips b{ color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rq .hero-cta{ margin-top: 16px; display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 14px 0 18px; border: 0; border-radius: var(--ds-r-pill); background: #fff; color: var(--ds-b1); font-size: 16px; font-weight: 700; box-shadow: 0 6px 16px rgba(14, 27, 51, 0.2); }
+.rq .hero-cta:active{ transform: scale(0.97); }
+.rq .hero-cta .ico{ width: 18px; height: 18px; stroke-width: 2.4; }
+
+.rq .start{ display: flex; flex-direction: column; gap: 8px; margin-top: -4px; }
+.rq .start .hint{ text-align: center; }
+
+/* Títulos de sección */
+.rq .sec{ display: flex; flex-direction: column; gap: 10px; }
+.rq .sec-head{ display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 6px; min-height: 34px; }
+.rq .sec-head h2{ font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -0.025em; }
+.rq .sec-note{ flex: none; font-size: 13px; font-weight: 600; color: var(--ds-ink-2); }
+.rq .card{ background: var(--ds-surface); border-radius: var(--ds-r-card); box-shadow: var(--ds-shadow-1); padding: 14px 14px 12px; }
+.rq .card-cap{ margin: 2px 4px 10px; font-size: 13px; font-weight: 600; color: var(--ds-ink-2); }
+
+/* Control segmentado en cápsula */
+.rq .seg{ display: flex; flex: none; padding: 3px; gap: 2px; border-radius: var(--ds-r-pill); background: var(--ds-fill-2); }
+.rq .seg button{ flex: 1; min-height: 30px; padding: 0 12px; border: 0; border-radius: var(--ds-r-pill); background: transparent; color: var(--ds-ink-2); font-size: 14px; font-weight: 600; white-space: nowrap; transition: background-color 0.16s ease, color 0.16s ease; }
+.rq .seg button[aria-pressed="true"]{ background: var(--seg-on); color: var(--ds-ink); box-shadow: 0 1px 3px rgba(14, 27, 51, 0.14), 0 0 0 0.5px rgba(14, 27, 51, 0.04); }
+.rq .seg.wide{ width: 100%; }
+.rq .seg.wide button{ min-height: 34px; }
+
+/* Gráficos de barras */
+.rq .chart{ position: relative; touch-action: pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.rq .chart svg{ width: 100%; height: auto; overflow: visible; }
+.rq .chart .grid line{ stroke: var(--ds-line); stroke-width: 1; }
+.rq .chart .grid line.base{ stroke: var(--ds-line-2); }
+.rq .chart text{ font-family: var(--ds-font); font-size: 11px; fill: var(--ds-ink-3); font-variant-numeric: tabular-nums; }
+.rq .chart .bar{ fill: var(--chart); transition: opacity 0.15s ease; }
+.rq .chart.active .bar{ opacity: 0.38; }
+.rq .chart.active .bar.on{ opacity: 1; }
+.rq .chart .guide{ stroke: var(--ds-ink-3); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0; }
+.rq .chart.active .guide{ opacity: 0.7; }
+.rq .chart-empty{ position: absolute; left: 30px; right: 0; top: 34%; text-align: center; font-size: 15px; font-weight: 600; color: var(--ds-ink-2); pointer-events: none; }
+.rq .tip{
+  position: absolute; left: 0; top: 0; z-index: 2; min-width: 84px; padding: 6px 11px 7px; border-radius: 14px; text-align: center; white-space: nowrap; pointer-events: none;
+  background: var(--ds-glass-strong); border: 0.5px solid var(--ds-glass-line); box-shadow: var(--ds-shadow-2);
+  -webkit-backdrop-filter: var(--ds-glass-blur); backdrop-filter: var(--ds-glass-blur);
+  font-size: 12px; line-height: 1.25; color: var(--ds-ink-2);
+}
+.rq .tip b{ display: block; font-size: 15px; font-weight: 700; color: var(--ds-ink); font-variant-numeric: tabular-nums; }
+
+/* Cifras de resumen */
+.rq .stats{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.rq .stat{ min-width: 0; padding: 10px 12px; border-radius: var(--ds-r-inner); background: var(--ds-surface-2); }
+.rq .stat small{ display: block; font-size: 12px; font-weight: 600; color: var(--ds-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rq .stat b{ display: block; margin-top: 2px; font-family: var(--ds-font-round); font-size: 21px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rq .stat b span{ font-family: var(--ds-font); font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--ds-ink-2); }
+.rq .stat em{ display: block; font-style: normal; font-size: 12px; color: var(--ds-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Listas agrupadas estilo Ajustes */
+.rq .list{ list-style: none; margin: 0; padding: 0; background: var(--ds-surface); border-radius: var(--ds-r-card); overflow: hidden; box-shadow: var(--ds-shadow-1); }
+.rq .list > li{ position: relative; }
+.rq .list > li + li::before{ content: ""; position: absolute; top: 0; right: 0; left: 62px; z-index: 1; border-top: 0.5px solid var(--ds-line-2); pointer-events: none; }
+.rq .row{
+  width: 100%; min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px;
+  border: 0; background: transparent; text-align: left; color: var(--ds-ink); transition: background-color 0.15s ease;
+}
+.rq button.row:active{ background: var(--ds-fill); }
+.rq .r-txt{ flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rq .r-txt b{ font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+.rq .r-txt small{ font-size: 14px; line-height: 1.3; color: var(--ds-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rq .r-bar{ margin-top: 6px; height: 4px; border-radius: 99px; background: var(--ds-fill-2); overflow: hidden; }
+.rq .r-bar span{ display: block; width: 0; height: 100%; border-radius: inherit; background: var(--chart); }
+.rq .r-end{ flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; }
+.rq .r-big{ font-family: var(--ds-font-round); font-size: 24px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.rq .r-big.zero{ color: var(--ds-ink-3); }
+.rq .r-unit{ font-size: 12px; font-weight: 600; color: var(--ds-ink-2); }
+.rq .r-chev{ flex: none; width: 18px; height: 18px; color: var(--ds-ink-3); margin-left: -4px; }
+.rq .ring{ position: relative; width: 38px; height: 38px; flex: none; }
+.rq .ring svg{ width: 38px; height: 38px; transform: rotate(-90deg); }
+.rq .ring .bg{ stroke: var(--ds-fill-2); }
+.rq .ring .fg{ stroke: var(--chart); }
+.rq .ring b{ position: absolute; inset: 0; display: grid; place-items: center; font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.rq .play{ width: 36px; height: 36px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--ds-tint-soft); color: var(--ds-tint); transition: transform 0.15s ease; }
+.rq .play:active{ transform: scale(0.92); }
+.rq .play .ico{ width: 16px; height: 16px; }
+.rq .play.on{ background: var(--ds-btn); color: var(--ds-on-btn); }
+.rq .more{ width: 40px; height: 40px; flex: none; display: grid; place-items: center; margin-right: -6px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ds-ink-3); }
+.rq .more:active{ background: var(--ds-fill); }
+.rq .list-more{ width: 100%; min-height: 50px; border: 0; background: transparent; color: var(--ds-tint); font-size: 16px; font-weight: 600; }
+.rq .list-more:active{ background: var(--ds-fill); }
+.rq .empty-row{ padding: 16px 18px; font-size: 15px; color: var(--ds-ink-2); }
+
+.rq .hint{ margin: 0; padding: 0 4px; font-size: 14px; line-height: 1.35; color: var(--ds-ink-2); }
+.rq .note{ margin: 0; padding: 12px 14px; border-radius: var(--ds-r-field); background: var(--ds-tint-soft); color: var(--ds-ink); font-size: 15px; line-height: 1.35; }
+.rq .note.warn{ background: var(--ds-warn-soft); }
+.rq .note.pos{ background: var(--ds-pos-soft); color: var(--ds-pos); font-weight: 600; }
+.rq .tag{ display: inline-flex; align-items: center; min-height: 22px; padding: 0 9px; border-radius: 11px; background: var(--ds-fill-2); color: var(--ds-ink-2); font-size: 12px; font-weight: 600; font-style: normal; white-space: nowrap; }
+.rq .tag.yes{ background: var(--ds-tint-soft); color: var(--ds-tint); }
+
+/* Hojas inferiores */
+.rq .sheet{ position: fixed; inset: 0; z-index: 10; display: flex; align-items: flex-end; justify-content: center; }
+.rq .backdrop{ position: absolute; inset: 0; background: var(--ds-scrim); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: fade 0.2s ease-out; }
+@keyframes fade{ from { opacity: 0; } }
+.rq .panel{
+  position: relative; width: 100%; max-width: 480px; max-height: 92%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 26px 18px calc(22px + env(safe-area-inset-bottom, 0px));
+  background: var(--ds-surface); border-radius: var(--ds-r-sheet) var(--ds-r-sheet) 0 0;
+  box-shadow: 0 -10px 40px rgba(14, 27, 51, 0.18); animation: ds-rise 0.28s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.rq .panel::before{ content: ""; position: absolute; top: 8px; left: 50%; width: 38px; height: 5px; margin-left: -19px; border-radius: 3px; background: var(--ds-line-2); }
+.rq .panel:focus{ outline: none; }
+.rq .panel > *{ flex-shrink: 0; }
+.rq .p-head{ display: flex; align-items: flex-start; gap: 12px; }
+.rq .p-head > div{ flex: 1; min-width: 0; }
+.rq .panel h2{ font-size: 24px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; }
+.rq .panel .sub{ margin: 3px 0 0; font-size: 15px; color: var(--ds-ink-2); }
+.rq .p-done{ flex: none; min-height: 36px; padding: 0 14px; border: 0; border-radius: var(--ds-r-pill); background: var(--ds-fill-2); color: var(--ds-tint); font-size: 15px; font-weight: 700; }
+.rq .grp{ margin: 6px 0 -6px; padding: 0 4px; font-size: 13px; font-weight: 600; color: var(--ds-ink-2); }
+.rq .panel .list{ background: var(--ds-surface-2); box-shadow: none; }
+.rq .panel .list > li + li::before{ left: 16px; }
+.rq .panel .card{ background: var(--ds-surface-2); box-shadow: none; }
+.rq .panel .stat{ background: var(--ds-surface-2); }
+.rq .panel .list.clips > li + li::before{ left: 62px; }
+.rq .kv{ display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 50px; padding: 10px 16px; font-size: 16px; }
+.rq .kv > span:first-child{ min-width: 0; color: var(--ds-ink); }
+.rq .kv > span:last-child{ flex: none; color: var(--ds-ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+.rq .kv small{ display: block; font-size: 13px; color: var(--ds-ink-2); }
+.rq .opt{ display: flex; flex-direction: column; gap: 10px; padding: 12px 16px 14px; font-size: 16px; }
+.rq .act{ width: 100%; min-height: 54px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border: 0; background: transparent; color: var(--ds-tint); font-size: 17px; font-weight: 600; text-align: left; }
+.rq .act:active{ background: var(--ds-fill); }
+.rq .act.neg{ color: var(--ds-neg); }
+
+/* Interruptor estilo iOS */
+.rq .sw{ position: relative; width: 51px; height: 31px; flex: none; }
+.rq .sw input{ position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.rq .sw span{ position: absolute; inset: 0; border-radius: 99px; background: var(--ds-fill-2); transition: background-color 0.2s ease; }
+.rq .sw span::after{ content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(14, 27, 51, 0.22), 0 0 0 0.5px rgba(14, 27, 51, 0.06); transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.25, 1); }
+.rq .sw input:checked + span{ background: var(--ds-btn); }
+.rq .sw input:checked + span::after{ transform: translateX(20px); }
+.rq .sw input:focus-visible + span{ outline: 3px solid var(--ds-tint); outline-offset: 2px; }
+.rq .time{ min-height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--ds-fill-2); color: var(--ds-tint); font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; -webkit-appearance: none; appearance: none; }
+
+/* Medidor de la prueba */
+.rq .rq-meter{ display: flex; flex-direction: column; gap: 8px; }
+.rq .m-track{ position: relative; height: 14px; border-radius: 99px; background: var(--ds-fill-2); overflow: hidden; }
+.rq .m-fill{ position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: inherit; background: var(--ds-ink-3); transition: width 0.08s linear; }
+.rq .m-fill.snore{ background: var(--chart); }
+.rq .m-thr{ position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--ds-ink); opacity: 0.55; }
+.rq .m-lab{ display: flex; justify-content: space-between; font-size: 13px; color: var(--ds-ink-2); }
+.rq .m-lab b{ color: var(--ds-ink); font-weight: 600; }
+
+/* Aviso flotante de vidrio */
+.rq .toast{
+  position: fixed; left: 16px; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+  max-width: 448px; min-height: 46px; margin: 0 auto; padding: 10px 20px;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border-radius: var(--ds-r-pill); background: rgba(14, 27, 51, 0.86); color: #fff; font-size: 15px;
+  -webkit-backdrop-filter: var(--ds-glass-blur); backdrop-filter: var(--ds-glass-blur);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.25), 0 10px 30px rgba(14, 27, 51, 0.3);
+  animation: ds-rise 0.25s ease-out;
+}
+
+/* Pantalla de la noche: negra, con letras tenues que se atenúan solas y se desplazan un poco cada minuto */
+.rq .rq-night{
+  position: fixed; inset: 0; z-index: 30; background: #000; color: var(--nt-1);
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+}
+.rq .n-wrap{
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 20px;
+  padding: calc(26px + env(safe-area-inset-top, 0px)) 24px calc(26px + env(safe-area-inset-bottom, 0px));
+  transition: transform 2s ease;
+}
+.rq .n-status{ margin: 0; display: inline-flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 600; color: var(--nt-2); transition: opacity 1.2s ease; }
+.rq .n-dot{ width: 8px; height: 8px; border-radius: 50%; background: var(--nt-2); animation: breathe 4s ease-in-out infinite; }
+.rq .n-dot.rec{ background: var(--nt-rec); }
+.rq .n-dot.wait{ animation: none; opacity: 0.6; }
+@keyframes breathe{ 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.rq .n-mid{ display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; max-width: 360px; }
+.rq .n-clock{ font-family: var(--ds-font-round); font-size: clamp(76px, 27vw, 128px); font-weight: 600; line-height: 1; letter-spacing: -0.045em; font-variant-numeric: tabular-nums; color: var(--nt-1); transition: opacity 1.2s ease; }
+.rq .n-line{ margin: 0; font-size: 17px; font-weight: 600; color: var(--nt-2); text-align: center; font-variant-numeric: tabular-nums; transition: opacity 1.2s ease; }
+.rq .n-meter{ width: 120px; height: 4px; border-radius: 99px; background: #0E1730; overflow: hidden; transition: opacity 1.2s ease; }
+.rq .n-meter span{ display: block; width: 0; height: 100%; border-radius: inherit; background: var(--nt-3); transition: width 0.2s linear; }
+.rq .n-meter span.snore{ background: var(--nt-2); }
+.rq .n-bottom{ display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; max-width: 360px; transition: opacity 1.2s ease; }
+.rq .n-warn{ margin: 0; padding: 10px 14px; border-radius: 16px; background: #1A1210; color: #C98A6E; font-size: 15px; line-height: 1.35; text-align: center; }
+.rq .n-btn{ min-height: 46px; padding: 0 22px; border: 1px solid #3B2A22; border-radius: var(--ds-r-pill); background: #140D0A; color: #D69878; font-size: 16px; font-weight: 600; }
+.rq .n-hold{
+  position: relative; overflow: hidden; isolation: isolate; width: 100%; min-height: 54px; padding: 0 22px; border: 1px solid #1B2847; border-radius: var(--ds-r-pill);
+  background: #070D1C; color: var(--nt-2); font-size: 16px; font-weight: 600;
+}
+.rq .n-hold i{ position: absolute; inset: 0; z-index: -1; background: rgba(77, 120, 243, 0.32); transform: scaleX(0); transform-origin: left center; transition: transform 0.25s ease; }
+.rq .n-hold.hold i{ transform: scaleX(1); transition: transform 1.3s linear; }
+.rq .n-hold.hold{ color: var(--nt-1); }
+.rq .rq-night.dim .n-clock{ opacity: 0.45; }
+.rq .rq-night.dim .n-status, .rq .rq-night.dim .n-line, .rq .rq-night.dim .n-meter{ opacity: 0.35; }
+.rq .rq-night.dim .n-bottom{ opacity: 0.25; }
+
+@media (max-width: 350px){
+  .rq .stats{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce){
+  .rq .panel, .rq .toast, .rq .backdrop{ animation: none; }
+  .rq .n-dot{ animation: none; }
+  .rq .n-wrap{ transition: none; }
+}
+/* ── Ajustes para convivir con el reloj ── */
+.rq h1, .rq h2, .rq h3{ font-family: var(--ds-font-display); letter-spacing: -0.022em; text-transform: none; color: inherit; }
+.rq .seg{ margin-top: 0; }
+.rq .seg button[aria-pressed="true"]{ color: var(--on-acc); }
+.rq .round-btn, .rq .btn.primary, .rq .hero-cta{ box-shadow: none; }
+.rq .hero{ box-shadow: inset 0 1px 0 rgba(255,255,255,.07); }
+.rq .hero::after{ display: none; }
+.rq .hero-art{ color: var(--acc); opacity: .08; }
+.rq .count-big{ color: var(--digit); }
+.rq .chips b{ color: var(--ui-fg); }
+.rq .hero-cta{ background: var(--acc); color: var(--on-acc); }
+.rq .toast{ background: var(--card2); color: var(--fg); z-index: 45; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.rq .panel{ box-shadow: 0 -10px 40px rgba(0,0,0,.6); }
+.rq .panel .play, .rq .panel .p-done{ background: var(--sep); }
+.rq .panel .play.on{ background: var(--ds-btn); }
+.rq .n-clock{ font-family: var(--font-clock); font-weight: 600; font-size: clamp(100px, 36vw, 170px); letter-spacing: .005em; }
+.rq .n-meter{ background: var(--card); }
+.rq .n-hold{ border-color: var(--sep); background: var(--card); color: var(--nt-2); }
+.rq .n-hold i{ background: var(--acc); opacity: .32; }
+.rq .n-alarm{ font-size: 15px; }
+.rq .rq-night{ background: var(--bg); }
+@media (orientation: landscape){ .rq .rq-night{ display: none; } }
+
+/* Pestañas de la pantalla de ajustes */
+#segTab{ margin-top: 14px; }
+
+/* Aviso de escucha en el modo reposo (horizontal) */
+.sb-listen{ display: none; }
+body.listening .sb-listen{ display: block; }
+.sb-listen svg{ display: block; width: .95em; height: .95em; margin-bottom: .18em; color: var(--acc); }
+.sb-listen small{ display: block; font-size: .5em; font-weight: 600; color: var(--fg2); letter-spacing: .04em; text-transform: uppercase; line-height: 1.25; }
+.sb-inner.flip .sb-listen svg{ margin-left: auto; }
+#sbEnd{
+  position: absolute; top: 14px; left: calc(env(safe-area-inset-left, 0px) + 14px); z-index: 5; display: none;
+  overflow: hidden; isolation: isolate; border: 0; border-radius: 999px; padding: 9px 16px;
+  background: var(--card2); color: var(--fg); font-size: 15px; font-weight: 600;
+  opacity: 0; pointer-events: none; transition: opacity .35s ease;
+}
+body.listening #sbEnd{ display: block; }
+.controls-on #sbEnd{ opacity: 1; pointer-events: auto; }
+#sbEnd i{ position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: -1; background: var(--acc); opacity: .35; transform: scaleX(0); transform-origin: left center; transition: transform .25s ease; }
+#sbEnd.hold i{ transform: scaleX(1); transition: transform 1.3s linear; }
+</style>
 </head>
 <body class="unarmed">
 
@@ -259,6 +597,11 @@ body.show-settings #arm{display:none}
       <div>
         <div class="sb-date"><span id="sbDay" class="acc tr">LUN</span> <span id="sbNum">12</span></div>
         <div class="sb-temp" id="sbTemp"></div>
+      </div>
+      <div class="sb-listen tr" id="sbListen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <small id="sbListenState">Escuchando</small>
+        <small id="sbListenN"></small>
       </div>
       <div class="sb-alarm tr" id="sbAlarm" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8" fill="currentColor"/><path d="M12 8.8V13l2.8 1.9" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.4 6.6 6.5 3.8M20.6 6.6 17.5 3.8M6.9 19.7 5.5 21.4M17.1 19.7l1.4 1.7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
@@ -273,6 +616,7 @@ body.show-settings #arm{display:none}
     <div class="bar"><i id="sbLevelFill"></i></div>
     <b id="sbLevelNum">100&nbsp;%</b>
   </div>
+  <button id="sbEnd" type="button"><i></i><span>Mantén para terminar la noche</span></button>
   <button id="sbGear" type="button">Ajustes</button>
 </main>
 
@@ -289,8 +633,13 @@ body.show-settings #arm{display:none}
       <div class="st-status"><span class="dot" id="stDot"></span><span id="stStatus">Toca cualquier parte para activar el sonido de la alarma.</span></div>
       <p class="st-tip">Gira el iPhone en horizontal para ver el reloj en reposo.</p>
       <div class="st-install" id="stInstall" hidden>Para abrirla como app independiente: en Safari toca <strong>Compartir</strong> y luego <strong>Agregar a pantalla de inicio</strong>.</div>
+      <div class="seg" id="segTab" role="group" aria-label="Sección">
+        <button type="button" data-v="alarma">Despertador</button>
+        <button type="button" data-v="rq">Ronquidos</button>
+      </div>
     </div>
 
+    <div id="paneAlarm">
     <h2>Alarmas</h2>
     <div class="group" id="alarmList"></div>
     <div class="group" style="margin-top:10px">
@@ -372,6 +721,64 @@ body.show-settings #arm{display:none}
         <li>Abre la app, toca la pantalla una vez y ponla en horizontal.</li>
       </ol>
     </div>
+    </div>
+
+    <div id="paneRq" class="rq" hidden>
+<main class="app" id="app">
+  <header class="top">
+    <div class="top-txt">
+      <p class="eyebrow" id="today">&nbsp;</p>
+      <h1>Ronquidos</h1>
+    </div>
+    <button class="round-btn" type="button" data-act="settings" aria-label="Ajustes de ronquidos">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg>
+    </button>
+  </header>
+
+  <section class="hero" id="hero" aria-live="polite"></section>
+
+  <div class="start">
+    <button class="btn primary block big" type="button" data-act="start">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.6A8.2 8.2 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6Z"/></svg>
+      Empezar la noche
+    </button>
+    <p class="hint">Deja el iPhone enchufado, cerca de la cama y con la app abierta.</p>
+  </div>
+
+  <section class="sec" id="sec-hours" hidden>
+    <div class="sec-head">
+      <h2>Por hora</h2>
+      <div class="seg" role="group" aria-label="Qué mostrar" data-seg="hourMode">
+        <button type="button" data-v="min">Minutos</button><button type="button" data-v="n">Ronquidos</button>
+      </div>
+    </div>
+    <div class="card">
+      <p class="card-cap" id="hours-cap"></p>
+      <div class="chart" id="chart-hours"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="sec-clips" hidden>
+    <div class="sec-head"><h2>Grabaciones</h2><span class="sec-note" id="clips-note"></span></div>
+    <ul class="list clips" id="clips"></ul>
+  </section>
+
+  <section class="sec" id="sec-hist" hidden>
+    <div class="sec-head">
+      <h2>Historial</h2>
+      <div class="seg" role="group" aria-label="Cuántas noches" data-seg="hist">
+        <button type="button" data-v="14">14</button><button type="button" data-v="30">30</button><button type="button" data-v="90">90</button>
+      </div>
+    </div>
+    <div class="card">
+      <p class="card-cap" id="hist-cap"></p>
+      <div class="chart" id="chart-hist"></div>
+      <div class="stats" id="hist-stats"></div>
+    </div>
+    <ul class="list" id="nights"></ul>
+  </section>
+</main>
+    </div>
   </div>
 </section>
 
@@ -422,6 +829,29 @@ body.show-settings #arm{display:none}
 
 <div id="toast" role="status" aria-live="polite"></div>
 
+<div class="rq" id="rqLayer">
+<div class="rq-night" id="rq-night" hidden>
+  <div class="n-wrap" id="n-wrap">
+    <p class="n-status"><i class="n-dot" id="n-dot"></i><span id="n-status">Preparando el micrófono…</span></p>
+    <div class="n-mid">
+      <div class="n-clock" id="n-clock">--:--</div>
+      <p class="n-line" id="n-line">&nbsp;</p>
+      <div class="n-meter" aria-hidden="true"><span id="n-level"></span></div>
+      <p class="n-line n-alarm" id="n-alarm" hidden></p>
+    </div>
+    <div class="n-bottom">
+      <p class="n-warn" id="n-warn" hidden></p>
+      <button class="n-btn" type="button" id="n-resume" hidden>Reanudar el micrófono</button>
+      <button class="n-hold" type="button" id="n-hold"><i></i><span>Mantén presionado para terminar</span></button>
+    </div>
+  </div>
+</div>
+<div id="sheets"></div>
+<div class="toast" id="rq-toast" role="status" hidden></div>
+<audio id="player" preload="none"></audio>
+<video id="nosleep" src="silencio.mp4" muted loop playsinline webkit-playsinline aria-hidden="true" style="position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0.01;pointer-events:none"></video>
+</div>
+
 <video id="keepAwake" class="hidden-media" src="keepawake.mp4" muted loop playsinline webkit-playsinline preload="auto"></video>
 <video id="camVideo" class="hidden-media" muted playsinline webkit-playsinline></video>
 <audio id="alarmAudio" preload="auto"></audio>
@@ -464,7 +894,8 @@ body.show-settings #arm{display:none}
     light: 'auto', thr: 10, nightFrom: '22:00', nightTo: '07:00', loc: null,
     snoozeUntil: null, snoozeLabel: '',
     dim: { day: 1, night: 1 },
-    guard: 'deriva'
+    guard: 'deriva',
+    tab: 'alarma'
   };
   var GUARD_NOTES = {
     deriva: 'Cada 3 minutos el reloj se corre unos milímetros, tan despacio que no se nota.',
@@ -486,6 +917,7 @@ body.show-settings #arm{display:none}
     if (!SOUNDS[out.sound]) out.sound = 'amanecer';
     if (!STYLES[out.style]) out.style = 'clasico';
     if (!GUARD_NOTES[out.guard]) out.guard = 'deriva';
+    if (out.tab !== 'rq') out.tab = 'alarma';
     if (!out.dim || typeof out.dim !== 'object') out.dim = { day: 1, night: 1 };
     ['day', 'night'].forEach(function (k) {
       var v = Number(out.dim[k]);
@@ -826,10 +1258,11 @@ body.show-settings #arm{display:none}
   function renderPreviewBtn() { $('previewBtn').textContent = previewing ? 'Detener' : 'Reproducir'; }
 
   /* ---------- Sonar / posponer / detener ---------- */
-  function ring(label) {
+  function ring(label, isTest) {
     if (ringing) return;
     if (previewing) stopPreview();
-    ringing = { label: label || 'Alarma', start: Date.now() };
+    ringing = { label: label || 'Alarma', start: Date.now(), test: !!isTest };
+    if (window.RQ) { try { window.RQ.alarmStart(); } catch (e) { } }
     $('rgLabel').textContent = ringing.label;
     $('rgSnooze').textContent = 'Posponer ' + S.snooze + ' min';
     $('rgWarn').hidden = true;
@@ -843,26 +1276,29 @@ body.show-settings #arm{display:none}
     if (p && p.catch) p.catch(function () { $('rgWarn').hidden = false; });
     startKeepAwake();
   }
-  function stopRing() {
+  // modo: 'snooze' (pospuesta), 'stop' (detenida por la persona) o nada (se cortó sola)
+  function stopRing(mode) {
     if (!ringing) return;
+    var wasTest = ringing.test;
     audio.pause();
     try { audio.currentTime = 0; } catch (e) { }
     ringing = null;
     $('ringing').hidden = true;
     renderSide(); renderStatus();
+    if (window.RQ) { try { window.RQ.alarmEnd(!wasTest && mode === 'stop'); } catch (e) { } }
   }
   function snooze() {
     if (!ringing) return;
     S.snoozeUntil = Date.now() + S.snooze * 60000;
     S.snoozeLabel = ringing.label;
     save();
-    stopRing();
+    stopRing('snooze');
     toast('Pospuesta ' + S.snooze + ' minutos');
   }
   function stopAll() {
     S.snoozeUntil = null; S.snoozeLabel = '';
     save();
-    stopRing();
+    stopRing('stop');
   }
   function updateRingTime() {
     if (!ringing) return;
@@ -900,7 +1336,7 @@ body.show-settings #arm{display:none}
     }
     if (testAt && nowMs >= testAt) {
       testAt = null;
-      ring('Prueba del despertador');
+      ring('Prueba del despertador', true);
     }
   }
 
@@ -973,7 +1409,9 @@ body.show-settings #arm{display:none}
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function renderSegs() {
     $('guardNote').textContent = GUARD_NOTES[S.guard] + (guard && guard.demo ? ' Gira el iPhone para verlo una vez.' : '');
-    [['segLight', S.light], ['segStyle', S.style], ['segGuard', S.guard]].forEach(function (p) {
+    $('paneAlarm').hidden = S.tab === 'rq';
+    $('paneRq').hidden = S.tab !== 'rq';
+    [['segTab', S.tab], ['segLight', S.light], ['segStyle', S.style], ['segGuard', S.guard]].forEach(function (p) {
       var btns = $(p[0]).querySelectorAll('button');
       for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-v') === p[1]);
     });
@@ -1128,7 +1566,7 @@ body.show-settings #arm{display:none}
     var t = e.changedTouches[0], dx = t.clientX - drag.x, dy = t.clientY - drag.y, mode = drag.mode;
     drag = null;
     if (mode === 'dim') { save(); applyDim(false); return; }
-    if (e.target.closest && e.target.closest('#sbGear')) return;
+    if (e.target.closest && e.target.closest('#sbGear, #sbEnd')) return;
     if (mode === 'side' && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) cycleStyle(dx < 0 ? 1 : -1);
     else if (!mode) sbTap();
   });
@@ -1138,7 +1576,7 @@ body.show-settings #arm{display:none}
   });
   sb.addEventListener('click', function (e) {
     if (Date.now() - lastTouch < 700) return;
-    if (e.target.closest && e.target.closest('#sbGear')) return;
+    if (e.target.closest && e.target.closest('#sbGear, #sbEnd')) return;
     sbTap();
   });
   $('sbGear').addEventListener('click', function () { document.body.classList.add('show-settings'); });
@@ -1214,6 +1652,13 @@ body.show-settings #arm{display:none}
   $('segLight').addEventListener('click', segHandler('light'));
   $('segStyle').addEventListener('click', segHandler('style'));
   $('segGuard').addEventListener('click', segHandler('guard'));
+  $('segTab').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (!b) return;
+    S.tab = b.getAttribute('data-v') === 'rq' ? 'rq' : 'alarma';
+    save(); renderSegs();
+    if (S.tab === 'rq' && window.RQ) window.RQ.show();
+  });
   $('thrRange').addEventListener('input', function () {
     S.thr = parseInt(this.value, 10) || 10; save();
     if (cam.level !== null) { cam.night = cam.level < S.thr; applyTheme(); }
@@ -1309,6 +1754,23 @@ body.show-settings #arm{display:none}
     }, 1200);
   }
 
+  /* ---------- Conexión con Ronquidos ---------- */
+  function nextAlarmText() {
+    var now = new Date(), target = null, snoozed = false;
+    if (S.snoozeUntil && S.snoozeUntil > now.getTime()) { target = new Date(S.snoozeUntil); snoozed = true; }
+    else { var nx = nextAlarm(now); if (nx && nx.date - now < 24 * 3600000) target = nx.date; }
+    if (!target) return '';
+    return 'Alarma ' + fmtTime(target.getHours(), target.getMinutes(), true) + (snoozed ? ' (pospuesta)' : '');
+  }
+  // Espera a que termine de abrirse la cámara (si se está pidiendo permiso) antes de abrir el micrófono
+  function camIdle() {
+    return new Promise(function (res) {
+      var n = 0;
+      (function wait() { if (!cam.starting || ++n > 80) return res(); setTimeout(wait, 250); })();
+    });
+  }
+  window.Reposo = { nextAlarmText: nextAlarmText, camIdle: camIdle };
+
   /* ---------- Ciclo principal ---------- */
   function renderAll() { renderHeader(); renderSide(); renderStatus(); renderAlarms(); }
   var lastMinute = -1;
@@ -1375,6 +1837,1321 @@ body.show-settings #arm{display:none}
     var top = true; try { top = window.self === window.top; } catch (e) { top = false; }
     if (top) navigator.serviceWorker.register('sw.js').catch(function () { });
   }
+})();
+</script>
+<script>
+'use strict';
+(function () {
+
+/*MOTOR:START*/
+// ── Motor de detección ──────────────────────────────────────────────────────────
+// Trabaja por cuadros de 50 ms. Para cada cuadro mide el nivel en la banda grave (80–800 Hz) y el nivel total.
+// Un sonido es candidato a ronquido si en la banda grave sobresale del ruido de fondo, dura entre 0,25 y 3,5 s y
+// la mayor parte de la energía que trae (descontado el fondo) es grave. Tres candidatos seguidos con el ritmo de la respiración (cada 1,5 a 12 s,
+// regulares) confirman un episodio; mientras siga, cada nuevo candidato cuenta. El episodio termina tras 25 s sin
+// ronquidos. Además guarda los últimos 25 s de audio a 8 kHz para que las grabaciones empiecen antes del ronquido.
+var SENS = {
+  baja:  { thr: 12, ratio: 0.66 },
+  media: { thr: 9,  ratio: 0.60 },
+  alta:  { thr: 6,  ratio: 0.52 }
+};
+var ABS_MIN = -85;
+
+function Biquad(type, f, sr) {
+  var w = 2 * Math.PI * f / sr, c = Math.cos(w), s = Math.sin(w), a = s / (2 * Math.SQRT1_2);
+  var b0, b1, b2;
+  if (type === 'lp') { b0 = (1 - c) / 2; b1 = 1 - c; b2 = (1 - c) / 2; }
+  else { b0 = (1 + c) / 2; b1 = -(1 + c); b2 = (1 + c) / 2; }
+  var a0 = 1 + a;
+  this.b0 = b0 / a0; this.b1 = b1 / a0; this.b2 = b2 / a0; this.a1 = (-2 * c) / a0; this.a2 = (1 - a) / a0;
+  this.x1 = 0; this.x2 = 0; this.y1 = 0; this.y2 = 0;
+}
+Biquad.prototype.run = function (x) {
+  var y = this.b0 * x + this.b1 * this.x1 + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
+  this.x2 = this.x1; this.x1 = x; this.y2 = this.y1; this.y1 = y;
+  return y;
+};
+
+function Detector(sr, opt) {
+  this.sr = sr;
+  this.k = Math.max(1, Math.round(sr / 8000));
+  this.rate = sr / this.k;                       // frecuencia de las grabaciones (8000 o 7350)
+  this.frameN = Math.round(sr * 0.05);
+  this.frameMs = this.frameN / sr * 1000;
+  this.frameS = this.frameN / this.k;            // muestras guardadas por cuadro
+  this.hp = [new Biquad('hp', 80, sr), new Biquad('hp', 80, sr)];
+  this.lp = [new Biquad('lp', 800, sr), new Biquad('lp', 800, sr)];
+  this.aa = [new Biquad('lp', this.rate * 0.42, sr), new Biquad('lp', this.rate * 0.42, sr)];
+  this.ringN = Math.round(this.rate * 25);
+  this.ring = new Float32Array(this.ringN);
+  this.s = 0; this.dc = 0;
+  this.acc = 0; this.e = 0; this.le = 0;
+  this.floor = null; this.calib = [];
+  this.ev = null; this.above = 0; this.below = 0;
+  this.cands = []; this.ep = null; this.rec = null;
+  this.armed = true;
+  this.clock = null;
+  this.level = -100; this.ratio = 0;
+  this.on = (opt && opt.on) || function () {};
+  this.setSens(opt && opt.sens);
+}
+Detector.prototype.setSens = function (name) {
+  var p = SENS[name] || SENS.media;
+  this.thr = p.thr; this.minRatio = p.ratio;
+};
+// x: bloque de muestras a la frecuencia del micrófono; now: hora (ms) del final del bloque
+Detector.prototype.push = function (x, now) {
+  var t0 = now - x.length / this.sr * 1000;
+  if (this.clock === null || Math.abs(t0 - this.clock) > 2000) this.clock = t0;
+  var aa0 = this.aa[0], aa1 = this.aa[1], hp0 = this.hp[0], hp1 = this.hp[1], lp0 = this.lp[0], lp1 = this.lp[1];
+  for (var i = 0; i < x.length; i++) {
+    var v = x[i];
+    var a = aa1.run(aa0.run(v));
+    if (++this.dc >= this.k) {
+      this.dc = 0;
+      this.ring[this.s % this.ringN] = a;
+      this.s++;
+      var r = this.rec;
+      if (r && r.n < r.buf.length) r.buf[r.n++] = a;
+    }
+    var h = hp1.run(hp0.run(v));
+    var l = lp1.run(lp0.run(h));
+    this.e += h * h; this.le += l * l;
+    if (++this.acc >= this.frameN) {
+      this.clock += this.frameMs;
+      this.frame(this.e / this.frameN, this.le / this.frameN, this.clock);
+      this.acc = 0; this.e = 0; this.le = 0;
+    }
+  }
+};
+Detector.prototype.frame = function (e, le, t) {
+  // Lt: nivel total; Ll: nivel en la banda grave (80–800 Hz), donde está el ronquido.
+  // La detección usa la banda grave: el soplido de la respiración, un ventilador o la lluvia casi no la mueven.
+  var Lt = 10 * Math.log10(e + 1e-12), Ll = 10 * Math.log10(le + 1e-12);
+  this.level = Ll; this.ratio = le / (e + 1e-12);
+  if (this.floor === null) {
+    this.calib.push([Ll, Lt]);
+    if (this.calib.length >= 30) {
+      var q = Math.floor(this.calib.length * 0.3);
+      this.floor = this.calib.map(function (c) { return c[0]; }).sort(function (a, b) { return a - b; })[q];
+      this.floorT = this.calib.map(function (c) { return c[1]; }).sort(function (a, b) { return a - b; })[q];
+    }
+    this.on('frame', { t: t, L: Ll, r: this.ratio, floor: null });
+    return;
+  }
+  var F = this.floor, on = F + this.thr, ev = this.ev;
+  // parte de la energía que está por sobre el fondo, y qué fracción de ella es grave
+  var xe = Math.max(0, e - Math.pow(10, this.floorT / 10)), xl = Math.max(0, le - Math.pow(10, F / 10));
+  if (!ev) {
+    if (Ll > on && Ll > ABS_MIN) {
+      if (++this.above >= 2) {
+        this.ev = { t0: t - 2 * this.frameMs, s0: this.s - 2 * this.frameS, xe: xe, xl: xl, pk: Ll, f: F };
+        this.below = 0;
+      }
+    } else {
+      this.above = 0;
+      // ruido de fondo: baja rápido y sube despacio (unos 15 s)
+      if (Ll < on - 2) this.floor += (Ll < F ? 0.06 : 0.004) * (Ll - F);
+    }
+    this.floorT += (Lt < this.floorT ? 0.06 : 0.02) * (Lt - this.floorT);
+  } else {
+    ev.xe += xe; ev.xl += Math.min(xl, xe || xl);
+    if (Ll > ev.pk) ev.pk = Ll;
+    if (Ll < on - 3) {
+      if (++this.below >= 6) this.endEvent(t - 6 * this.frameMs, this.s - 6 * this.frameS);
+    } else this.below = 0;
+    if (this.ev && t - ev.t0 > 8000) {
+      // un sonido grave y parejo de más de 8 s (motor, televisor) pasa a ser el nuevo fondo
+      this.on('sound', { t0: ev.t0, t1: t, dur: t - ev.t0, ratio: ev.xl / (ev.xe + 1e-12), over: ev.pk - ev.f, snore: false, long: true });
+      this.floor = Ll - 2; this.floorT = Lt - 2; this.ev = null; this.above = 0; this.below = 0; this.cands = [];
+    }
+  }
+  if (this.ep && t - this.ep.last > 25000) this.endEpisode();
+  this.on('frame', { t: t, L: Ll, r: this.ratio, floor: this.floor });
+};
+Detector.prototype.endEvent = function (t1, s1) {
+  var ev = this.ev;
+  this.ev = null; this.above = 0; this.below = 0;
+  var dur = t1 - ev.t0, ratio = Math.min(1, ev.xl / (ev.xe + 1e-12)), over = ev.pk - ev.f;
+  var snore = dur >= 250 && dur <= 3500 && ratio >= this.minRatio && over >= this.thr + 1;
+  var c = { t0: ev.t0, t1: t1, s0: ev.s0, s1: s1, dur: dur, ratio: ratio, over: over, snore: snore };
+  this.on('sound', c);
+  if (!this.armed) return;
+  if (!snore) {
+    // una voz o un golpe entre medio corta la cadena: los ronquidos vienen entre silencios
+    if (!this.ep && dur >= 250) this.cands = [];
+    return;
+  }
+  if (this.ep) {
+    this.ep.n++; this.ep.last = t1; this.ep.lastS = s1;
+    this.on('snore', c);
+    return;
+  }
+  var cs = this.cands;
+  cs.push(c);
+  while (cs.length && t1 - cs[0].t0 > 40000) cs.shift();
+  if (cs.length >= 3) {
+    var a = cs[cs.length - 3], b = cs[cs.length - 2];
+    var g1 = b.t0 - a.t0, g2 = c.t0 - b.t0;
+    if (g1 >= 1500 && g1 <= 12000 && g2 >= 1500 && g2 <= 12000 && Math.max(g1, g2) / Math.min(g1, g2) <= 2.5) {
+      this.ep = { t0: a.t0, s0: a.s0, n: 3, last: t1, lastS: s1 };
+      this.cands = [];
+      this.on('episode', this.ep);
+      this.on('snore', a); this.on('snore', b); this.on('snore', c);
+    }
+  }
+};
+Detector.prototype.endEpisode = function () {
+  var ep = this.ep;
+  this.ep = null;
+  if (ep) this.on('episodeEnd', ep);
+};
+// Grabación: copia lo que hay en la memoria desde s0 y sigue agregando hasta maxSec segundos
+Detector.prototype.startClip = function (s0, maxSec) {
+  var max = Math.round(maxSec * this.rate);
+  s0 = Math.max(Math.round(s0), this.s - this.ringN + 1, 0);
+  var buf = new Float32Array(max), n = 0;
+  for (var s = s0; s < this.s && n < max; s++) buf[n++] = this.ring[s % this.ringN];
+  this.rec = { buf: buf, n: n, s0: s0 };
+  return this.rec;
+};
+Detector.prototype.clipFull = function () { return !!this.rec && this.rec.n >= this.rec.buf.length; };
+Detector.prototype.stopClip = function (sEnd) {
+  var r = this.rec;
+  this.rec = null;
+  if (!r) return null;
+  var n = sEnd == null ? r.n : Math.max(0, Math.min(r.n, Math.round(sEnd) - r.s0));
+  return { data: r.buf.subarray(0, n), s0: r.s0 };
+};
+
+// WAV de 16 bits, mono, con volumen ajustado para que se escuche bien
+function encodeWav(data, rate) {
+  var n = data.length, pk = 0, i;
+  for (i = 0; i < n; i++) { var av = data[i] < 0 ? -data[i] : data[i]; if (av > pk) pk = av; }
+  var g = pk > 0 ? Math.min(10, 0.89 / pk) : 1;
+  var buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  function str(o, s) { for (var j = 0; j < s.length; j++) v.setUint8(o + j, s.charCodeAt(j)); }
+  str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, 'data'); v.setUint32(40, n * 2, true);
+  var fade = Math.min(Math.round(rate * 0.03), Math.floor(n / 2));
+  for (i = 0; i < n; i++) {
+    var s = data[i] * g;
+    if (i < fade) s *= i / fade; else if (i > n - fade) s *= (n - i) / fade;
+    if (s > 1) s = 1; else if (s < -1) s = -1;
+    v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  return buf;
+}
+/*MOTOR:END*/
+
+// ── Utilidades ────────────────────────────────────────────────────────────────
+var MIN = 60000, HOUR = 3600000;
+var MAX_CLIPS = 20, CLIP_MAX_S = 30, PRE_S = 1.5, MID_CLIP_GAP = 15 * MIN;
+var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+var DIAS_C = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+var MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+var MESES_C = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+
+function $(s, r) { return (r || document).querySelector(s); }
+function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function pad(n) { return (n < 10 ? '0' : '') + n; }
+function hm(ts) { var d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function plural(n, one, many) { return n === 1 ? one : many; }
+function fmtInt(n) { return Math.round(n).toLocaleString('es-CL'); }
+function fmtDur(ms) {
+  var m = Math.round(ms / MIN);
+  if (m < 60) return m + ' min';
+  var h = Math.floor(m / 60), r = m % 60;
+  return r ? h + ' h ' + r + ' min' : h + ' h';
+}
+function fmtSec(s) {
+  s = Math.round(s);
+  return s < 60 ? s + ' s' : Math.floor(s / 60) + ':' + pad(s % 60) + ' min';
+}
+function fmtMB(b) { return (b / 1048576).toLocaleString('es-CL', { maximumFractionDigits: 1 }) + ' MB'; }
+function nightDay(r) { return new Date(r.start - 12 * HOUR); }
+function dayShort(d) { return DIAS_C[d.getDay()] + ' ' + d.getDate() + ' ' + MESES_C[d.getMonth()]; }
+function dayLong(d) { return DIAS[d.getDay()] + ' ' + d.getDate() + ' de ' + MESES[d.getMonth()]; }
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function floorHour(t) { var d = new Date(t); d.setMinutes(0, 0, 0); return d.getTime(); }
+
+var ICON = {
+  play: '<svg class="ico fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2Z"/></svg>',
+  pause: '<svg class="ico fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4.5" width="4.4" height="15" rx="1.4"/><rect x="13.6" y="4.5" width="4.4" height="15" rx="1.4"/></svg>',
+  more: '<svg class="ico fill" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="18.5" cy="12" r="1.8"/></svg>',
+  chev: '<svg class="ico r-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 14.6A8.2 8.2 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6Z"/></svg>',
+  share: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M8 7.5l4-4 4 4M6 11.5v7a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-7"/></svg>',
+  trash: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l.9 11.6A2 2 0 0 0 9.4 20.5h5.2a2 2 0 0 0 2-1.9L17.5 7M9.5 7V4.5h5V7"/></svg>'
+};
+
+// ── Ajustes ─────────────────────────────────────────────────────────────────────
+var DEF = { sens: 'media', audio: true, keep: 14, delay: 0, stopOn: false, stopAt: '07:30', endOnAlarm: true, hourMode: 'min', hist: 14 };
+var cfg = (function () {
+  try { return Object.assign({}, DEF, JSON.parse(localStorage.getItem('ronquidos-ajustes') || '{}')); }
+  catch (e) { return Object.assign({}, DEF); }
+})();
+function saveCfg() { try { localStorage.setItem('ronquidos-ajustes', JSON.stringify(cfg)); } catch (e) {} }
+
+// ── Base de datos (IndexedDB): noches y audios por separado ─────────────────────
+var DB = (function () {
+  var p = null;
+  function open() {
+    if (p) return p;
+    p = new Promise(function (res, rej) {
+      var r = indexedDB.open('ronquidos', 1);
+      r.onupgradeneeded = function () {
+        var db = r.result;
+        if (!db.objectStoreNames.contains('nights')) db.createObjectStore('nights', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('audio')) db.createObjectStore('audio', { keyPath: 'id' }).createIndex('night', 'night');
+      };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { p = null; rej(r.error); };
+    });
+    return p;
+  }
+  function tx(store, mode, fn) {
+    return open().then(function (db) {
+      return new Promise(function (res, rej) {
+        var t = db.transaction(store, mode), out;
+        var q = fn(t.objectStore(store));
+        if (q) q.onsuccess = function () { out = q.result; };
+        t.oncomplete = function () { res(out); };
+        t.onerror = function () { rej(t.error); };
+        t.onabort = function () { rej(t.error); };
+      });
+    });
+  }
+  return {
+    put: function (s, v) { return tx(s, 'readwrite', function (o) { return o.put(v); }); },
+    get: function (s, k) { return tx(s, 'readonly', function (o) { return o.get(k); }); },
+    all: function (s) { return tx(s, 'readonly', function (o) { return o.getAll(); }); },
+    del: function (s, k) { return tx(s, 'readwrite', function (o) { return o.delete(k); }); },
+    keys: function (s) { return tx(s, 'readonly', function (o) { return o.getAllKeys(); }); },
+    clear: function (s) { return tx(s, 'readwrite', function (o) { return o.clear(); }); }
+  };
+})();
+
+function deleteNight(r) {
+  var ps = (r.clips || []).map(function (c) { return DB.del('audio', c.id); });
+  ps.push(DB.del('nights', r.id));
+  return Promise.all(ps);
+}
+// Conserva los audios de las últimas cfg.keep noches; de las anteriores quedan solo las cifras
+function prune() {
+  return DB.all('nights').then(function (all) {
+    var list = all.filter(function (r) { return !r.live; }).sort(function (a, b) { return b.start - a.start; });
+    var jobs = [];
+    for (var i = cfg.keep; i < list.length; i++) {
+      var r = list[i];
+      if (r.clips && r.clips.length) {
+        r.clips.forEach(function (c) { jobs.push(DB.del('audio', c.id)); });
+        r.cleared = (r.cleared || 0) + r.clips.length;
+        r.clips = [];
+        jobs.push(DB.put('nights', r));
+      }
+    }
+    return Promise.all(jobs);
+  });
+}
+
+// ── Cifras de una noche ────────────────────────────────────────────────────────
+function stats(r) {
+  var end = r.end || Date.now(), gaps = 0;
+  (r.gaps || []).forEach(function (g) { gaps += Math.max(0, Math.min(g[1], end) - Math.max(g[0], r.start)); });
+  var listened = Math.max(0, end - r.start - gaps);
+  var min = Object.keys(r.min || {}).length;
+  var pct = listened > 0 ? Math.min(100, Math.round(min * MIN / listened * 100)) : 0;
+  return { listened: listened, min: min, pct: pct, snores: r.snores || 0 };
+}
+function hourly(r) {
+  var end = r.end || Date.now(), h0 = floorHour(r.start), h1 = floorHour(end - 1), out = [];
+  for (var h = h0; h <= h1; h += HOUR) out.push({ h: h, min: 0, n: 0 });
+  Object.keys(r.min || {}).forEach(function (k) {
+    var i = Math.round((floorHour(k * MIN) - h0) / HOUR);
+    if (out[i]) { out[i].min++; out[i].n += r.min[k][0]; }
+  });
+  return out;
+}
+
+// ── Gráfico de barras (una serie; barras de hasta 24 px con el extremo redondeado) ──────
+var charts = [];
+function niceMax(v, floor) {
+  v = Math.max(v, floor || 1);
+  var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+function barChart(el, o) {
+  var entry = null;
+  charts = charts.filter(function (c) { if (c.el === el) entry = c; return c.el.isConnected; });
+  if (!entry) { entry = { el: el }; charts.push(entry); }
+  entry.o = o;
+  drawChart(entry);
+}
+function drawChart(entry) {
+  var el = entry.el, o = entry.o;
+  var W = Math.max(240, Math.round(el.clientWidth || 320)), H = 170;
+  var padL = 30, padR = 2, padT = 8, padB = 22;
+  var n = o.data.length, iw = W - padL - padR, ih = H - padT - padB, base = padT + ih;
+  var slot = iw / Math.max(n, 1), bw = Math.max(3, Math.min(24, slot * 0.62));
+  function y(v) { return base - (v / o.yMax) * ih; }
+  var grid = '', labs = '', bars = '', hits = '', xl = '';
+  o.ticks.forEach(function (t) {
+    var yy = Math.round(y(t)) + 0.5;
+    grid += '<line' + (t === 0 ? ' class="base"' : '') + ' x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yy + '" y2="' + yy + '"/>';
+    labs += '<text x="' + (padL - 7) + '" y="' + (yy + 3.5) + '" text-anchor="end">' + o.fmtY(t) + '</text>';
+  });
+  var every = Math.max(1, Math.ceil(30 / slot));
+  o.data.forEach(function (d, i) {
+    var cx = padL + slot * i + slot / 2;
+    if (d.v > 0) {
+      var h = Math.max(2, (Math.min(d.v, o.yMax) / o.yMax) * ih), x = cx - bw / 2, r = Math.min(4, bw / 2, h), top = base - h;
+      bars += '<path class="bar" data-i="' + i + '" d="M' + x.toFixed(1) + ' ' + base + 'V' + (top + r).toFixed(1) + 'Q' + x.toFixed(1) + ' ' + top.toFixed(1) + ' ' + (x + r).toFixed(1) + ' ' + top.toFixed(1) +
+        'H' + (x + bw - r).toFixed(1) + 'Q' + (x + bw).toFixed(1) + ' ' + top.toFixed(1) + ' ' + (x + bw).toFixed(1) + ' ' + (top + r).toFixed(1) + 'V' + base + 'Z"/>';
+    }
+    if ((n - 1 - i) % every === 0) xl += '<text x="' + cx.toFixed(1) + '" y="' + (H - 5) + '" text-anchor="middle">' + d.x + '</text>';
+  });
+  el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + o.label + '">' +
+    '<g class="grid">' + grid + '</g>' + labs + '<line class="guide" x1="0" x2="0" y1="' + padT + '" y2="' + base + '"/>' + bars + xl + '</svg>' +
+    '<div class="tip" hidden></div>' + (o.empty ? '<p class="chart-empty">' + o.empty + '</p>' : '');
+  var svg = el.firstChild, tip = el.querySelector('.tip'), guide = svg.querySelector('.guide'), hideT = 0;
+  function show(clientX) {
+    clearTimeout(hideT);
+    var rc = svg.getBoundingClientRect(), k = rc.width / W;
+    var i = clamp(Math.floor(((clientX - rc.left) / k - padL) / slot), 0, n - 1), d = o.data[i];
+    if (!d) return;
+    el.classList.add('active');
+    $$('.bar', svg).forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-i') === i); });
+    var cx = padL + slot * i + slot / 2;
+    guide.setAttribute('x1', cx); guide.setAttribute('x2', cx);
+    tip.innerHTML = '<b>' + d.tip + '</b>' + d.sub;
+    tip.hidden = false;
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var left = clamp(cx * k - tw / 2, 0, rc.width - tw);
+    var top = Math.max(-6, Math.min(y(Math.min(d.v, o.yMax)) * k - th - 10, (padT + ih * 0.42) * k - th));
+    tip.style.transform = 'translate(' + left.toFixed(0) + 'px,' + top.toFixed(0) + 'px)';
+  }
+  function hide(delay) {
+    clearTimeout(hideT);
+    hideT = setTimeout(function () { el.classList.remove('active'); tip.hidden = true; }, delay || 0);
+  }
+  svg.addEventListener('pointerdown', function (e) { show(e.clientX); });
+  svg.addEventListener('pointermove', function (e) { if (e.pointerType === 'mouse' || e.buttons || e.pressure) show(e.clientX); });
+  svg.addEventListener('pointerup', function (e) { hide(e.pointerType === 'mouse' ? 0 : 1800); });
+  svg.addEventListener('pointercancel', function () { hide(600); });
+  svg.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') hide(0); });
+}
+var resizeT = 0;
+window.addEventListener('resize', function () {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(function () { charts = charts.filter(function (c) { return c.el.isConnected; }); charts.forEach(drawChart); }, 150);
+});
+
+function hoursChart(el, r, mode) {
+  var data = hourly(r), maxN = 0;
+  data.forEach(function (d) { if (d.n > maxN) maxN = d.n; });
+  var isMin = mode !== 'n', yMax = isMin ? 60 : niceMax(maxN, 10);
+  barChart(el, {
+    label: isMin ? 'Minutos roncando en cada hora de la noche' : 'Ronquidos en cada hora de la noche',
+    yMax: yMax, ticks: isMin ? [0, 20, 40, 60] : [0, yMax / 2, yMax],
+    fmtY: function (v) { return fmtInt(v); },
+    empty: (r.snores || 0) === 0 ? 'Sin ronquidos esta noche' : '',
+    data: data.map(function (d) {
+      var v = isMin ? d.min : d.n;
+      return { v: v, x: pad(new Date(d.h).getHours()),
+        tip: isMin ? v + ' min' : fmtInt(v) + ' ' + plural(v, 'ronquido', 'ronquidos'),
+        sub: 'de ' + hm(Math.max(d.h, r.start)) + ' a ' + hm(Math.min(d.h + HOUR, r.end || Date.now())) };
+    })
+  });
+}
+
+// ── Pantalla principal ────────────────────────────────────────────────────────
+var nights = [], showAll = false;
+
+function render() {
+  return DB.all('nights').then(function (all) {
+    nights = all.filter(function (r) { return !r.live; }).sort(function (a, b) { return b.start - a.start; });
+    var d = new Date();
+    $('#today').textContent = cap(dayLong(d));
+    renderHero(); renderHours(); renderClips(); renderHist();
+  }).catch(function () {
+    $('#hero').innerHTML = '<p class="eyebrow">Ronquidos</p><p class="hero-title">No se pudo abrir el registro</p><p class="hero-txt">El iPhone no dejó leer los datos guardados. Cierra la app y vuelve a abrirla.</p>';
+  });
+}
+
+function renderHero() {
+  var h = $('#hero'), r = nights[0];
+  if (!r) {
+    h.innerHTML = '<span class="hero-art">' + ICON.moon + '</span><p class="eyebrow">Para empezar</p><p class="hero-title">Aún no hay noches</p>' +
+      '<p class="hero-txt">Al acostarte toca «Empezar la noche». La app escucha mientras duermes, cuenta los ronquidos y graba algunos trozos. En la mañana verás cuánto roncaste, hora por hora.</p>' +
+      '<button class="hero-cta" type="button" data-act="test">Probar la detección' + ICON.chev.replace('r-chev', '') + '</button>';
+    return;
+  }
+  var s = stats(r), when = Date.now() - r.end < 20 * HOUR ? 'Anoche' : 'Última noche';
+  var big;
+  if (!s.min) big = '<div class="count-big ok">Sin ronquidos</div>';
+  else if (s.min < 60) big = '<div class="count-big">' + s.min + '<span>min roncando</span></div>';
+  else big = '<div class="count-big">' + Math.floor(s.min / 60) + ' h ' + (s.min % 60) + '<span>min roncando</span></div>';
+  var chips = '';
+  if (s.min) {
+    chips = '<div class="chips"><span><b>' + fmtInt(s.snores) + '</b> ' + plural(s.snores, 'ronquido', 'ronquidos') + '</span>' +
+      '<span><b>' + r.episodes + '</b> ' + plural(r.episodes, 'episodio', 'episodios') + '</span>' +
+      '<span>Más largo <b>' + fmtDur(Math.max(MIN, r.longest || 0)) + '</b></span></div>';
+  }
+  h.innerHTML = '<span class="hero-art">' + ICON.moon + '</span><p class="eyebrow">' + when + ' · ' + dayShort(nightDay(r)) + '</p>' + big +
+    '<p class="hero-sub">' + (s.min ? s.pct + ' % de ' : '') + fmtDur(s.listened) + ' escuchando · ' + hm(r.start) + ' a ' + hm(r.end) + '</p>' + chips +
+    '<button class="hero-cta" type="button" data-act="night" data-id="' + r.id + '">Ver la noche' + ICON.chev.replace('r-chev', '') + '</button>';
+}
+
+function renderHours() {
+  var r = nights[0], sec = $('#sec-hours');
+  sec.hidden = !r;
+  if (!r) return;
+  setSeg($('[data-seg="hourMode"]'), cfg.hourMode);
+  $('#hours-cap').textContent = cap(dayLong(nightDay(r))) + ' · ' + hm(r.start) + ' a ' + hm(r.end);
+  hoursChart($('#chart-hours'), r, cfg.hourMode);
+}
+
+function clipRows(r, limit) {
+  var list = (r.clips || []).slice(0, limit);
+  return list.map(function (c) {
+    return '<li><div class="row" data-clip="' + c.id + '">' +
+      '<button class="play" type="button" data-act="play" data-id="' + c.id + '" aria-label="Escuchar la grabación de las ' + hm(c.t) + '">' + ICON.play + '</button>' +
+      '<div class="r-txt"><b class="num">' + hm(c.t) + '</b><small>' + fmtSec(c.dur) + ' · ' + c.n + ' ' + plural(c.n, 'ronquido', 'ronquidos') + '</small>' +
+      '<div class="r-bar prog" hidden><span></span></div></div>' +
+      '<button class="more" type="button" data-act="clip" data-id="' + c.id + '" data-night="' + r.id + '" aria-label="Más opciones">' + ICON.more + '</button>' +
+      '</div></li>';
+  }).join('');
+}
+function noClipsText(r) {
+  if (r.cleared) return 'Los audios de esta noche ya se borraron. Se guardan los de las últimas ' + cfg.keep + ' noches.';
+  if (!r.snores) return 'No hubo ronquidos que grabar.';
+  if (r.noAudio) return 'Esta noche no se guardó audio (está desactivado en Ajustes).';
+  return 'No se guardaron grabaciones.';
+}
+function renderClips() {
+  var r = nights[0], sec = $('#sec-clips');
+  sec.hidden = !r;
+  if (!r) return;
+  var n = (r.clips || []).length;
+  $('#clips-note').textContent = n ? n + ' ' + plural(n, 'audio', 'audios') : '';
+  $('#clips').innerHTML = n ? clipRows(r, 5) + (n > 5 ? '<li><button class="list-more" type="button" data-act="night" data-id="' + r.id + '">Ver las ' + n + ' grabaciones</button></li>' : '')
+    : '<li class="empty-row">' + noClipsText(r) + '</li>';
+  Player.paint();
+}
+
+function ringSvg(p) {
+  var C = 2 * Math.PI * 14;
+  return '<div class="ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="bg" cx="18" cy="18" r="14" fill="none" stroke-width="4"/>' +
+    (p > 0 ? '<circle class="fg" cx="18" cy="18" r="14" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="' + C.toFixed(2) + '" stroke-dashoffset="' + (C * (1 - Math.max(p, 3) / 100)).toFixed(2) + '"/>' : '') +
+    '</svg><b>' + p + (p < 100 ? '%' : '') + '</b></div>';
+}
+function renderHist() {
+  var sec = $('#sec-hist');
+  sec.hidden = !nights.length;
+  if (!nights.length) return;
+  setSeg($('[data-seg="hist"]'), String(cfg.hist));
+  var range = nights.slice(0, cfg.hist).reverse(), mx = 0, sum = 0, zero = 0, worst = null;
+  range.forEach(function (r) {
+    var m = stats(r).min;
+    sum += m; if (m === 0) zero++;
+    if (m > mx) mx = m;
+    if (!worst || m > stats(worst).min) worst = r;
+  });
+  $('#hist-cap').textContent = range.length === 1 ? 'Minutos roncando · 1 noche' : 'Minutos roncando · últimas ' + range.length + ' noches';
+  var yMax = niceMax(mx, 10);
+  barChart($('#chart-hist'), {
+    label: 'Minutos roncando por noche', yMax: yMax, ticks: [0, yMax / 2, yMax],
+    fmtY: function (v) { return fmtInt(v); },
+    empty: mx === 0 ? 'Sin ronquidos en estas noches' : '',
+    data: range.map(function (r) {
+      var m = stats(r).min, d = nightDay(r);
+      return { v: m, x: String(d.getDate()), tip: m + ' min', sub: dayShort(d) };
+    })
+  });
+  var avg = range.length ? Math.round(sum / range.length) : 0;
+  var wm = worst ? stats(worst).min : 0;
+  $('#hist-stats').innerHTML =
+    '<div class="stat"><small>Promedio</small><b>' + avg + ' <span>min</span></b><em>por noche</em></div>' +
+    '<div class="stat"><small>Sin roncar</small><b>' + zero + ' <span>de ' + range.length + '</span></b><em>' + plural(range.length, 'noche', 'noches') + '</em></div>' +
+    '<div class="stat"><small>Más alta</small><b>' + wm + ' <span>min</span></b><em>' + (worst && wm ? dayShort(nightDay(worst)) : '—') + '</em></div>';
+  var shown = showAll ? nights : nights.slice(0, 10);
+  $('#nights').innerHTML = shown.map(function (r) {
+    var s = stats(r);
+    return '<li><button class="row" type="button" data-act="night" data-id="' + r.id + '">' + ringSvg(s.pct) +
+      '<span class="r-txt"><b>' + cap(dayShort(nightDay(r))) + '</b><small>' + hm(r.start) + ' a ' + hm(r.end) + ' · ' + fmtDur(s.listened) + '</small></span>' +
+      '<span class="r-end"><span class="r-big' + (s.min ? '' : ' zero') + '">' + s.min + '</span><span class="r-unit">min</span></span>' + ICON.chev + '</button></li>';
+  }).join('') + (!showAll && nights.length > 10 ? '<li><button class="list-more" type="button" data-act="all-nights">Mostrar las ' + nights.length + ' noches</button></li>' : '');
+}
+
+function setSeg(seg, v) {
+  if (!seg) return;
+  $$('button', seg).forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-v') === String(v) ? 'true' : 'false'); });
+}
+
+// ── Avisos y hojas ──────────────────────────────────────────────────────────────
+var toastT = 0;
+function toast(msg, ms) {
+  var t = $('#rq-toast');
+  t.textContent = msg; t.hidden = false;
+  t.style.animation = 'none'; void t.offsetWidth; t.style.animation = '';
+  clearTimeout(toastT);
+  toastT = setTimeout(function () { t.hidden = true; }, ms || 3200);
+}
+var sheetStack = [];
+function openSheet(html, onClose) {
+  var root = document.createElement('div');
+  root.className = 'sheet';
+  root.innerHTML = '<div class="backdrop"></div><div class="panel" role="dialog" aria-modal="true" tabindex="-1">' + html + '</div>';
+  $('#sheets').appendChild(root);
+  lockPage(true);
+  var s = { root: root, panel: $('.panel', root), onClose: onClose, close: null };
+  s.close = function () {
+    if (!root.isConnected) return;
+    root.remove();
+    sheetStack = sheetStack.filter(function (x) { return x !== s; });
+    if (!sheetStack.length) lockPage(false);
+    if (s.onClose) s.onClose();
+  };
+  $('.backdrop', root).addEventListener('click', s.close);
+  root.addEventListener('click', function (e) { if (e.target.closest('[data-close]')) s.close(); });
+  sheetStack.push(s);
+  try { s.panel.focus({ preventScroll: true }); } catch (e) {}
+  return s;
+}
+function closeAllSheets() { sheetStack.slice().forEach(function (s) { s.close(); }); }
+function infoSheet(title, html) {
+  openSheet('<div class="p-head"><div><h2>' + title + '</h2></div><button class="p-done" type="button" data-close>Listo</button></div>' + html);
+}
+
+// ── Detalle de una noche ────────────────────────────────────────────────────────
+function nightSheet(id) {
+  var r = null;
+  nights.forEach(function (x) { if (x.id === id) r = x; });
+  if (!r) return;
+  var s = stats(r), d = nightDay(r), n = (r.clips || []).length, mode = cfg.hourMode;
+  var notes = '';
+  if (r.cut) notes += '<p class="note warn">La app se cerró a las ' + hm(r.end) + '; la noche quedó guardada hasta esa hora.</p>';
+  (r.gaps || []).filter(function (g) { return g[1] - g[0] >= 2 * MIN; }).forEach(function (g) {
+    notes += '<p class="note warn">No se escuchó entre las ' + hm(g[0]) + ' y las ' + hm(g[1]) + ' (la app quedó en segundo plano, sonó la alarma o se cortó el micrófono).</p>';
+  });
+  var sh = openSheet(
+    '<div class="p-head"><div><h2>Noche del ' + dayLong(d) + '</h2><p class="sub">' + hm(r.start) + ' a ' + hm(r.end) + ' · ' + fmtDur(s.listened) + ' escuchando</p></div>' +
+    '<button class="p-done" type="button" data-close>Listo</button></div>' +
+    '<div class="stats" style="margin-top:0"><div class="stat"><small>Roncando</small><b>' + s.min + ' <span>min</span></b><em>' + s.pct + ' % de la noche</em></div>' +
+    '<div class="stat"><small>Ronquidos</small><b>' + fmtInt(s.snores) + '</b><em>' + r.episodes + ' ' + plural(r.episodes, 'episodio', 'episodios') + '</em></div>' +
+    '<div class="stat"><small>Más largo</small><b>' + (s.min ? fmtDur(Math.max(MIN, r.longest || 0)).replace(' min', ' <span>min</span>') : '—') + '</b><em>seguido</em></div></div>' +
+    '<div class="sec-head" style="padding:0 4px;margin-bottom:-4px"><p class="grp" style="margin:0;padding:0">Por hora</p>' +
+    '<div class="seg" role="group" aria-label="Qué mostrar" data-seg="nightMode"><button type="button" data-v="min">Minutos</button><button type="button" data-v="n">Ronquidos</button></div></div>' +
+    '<div class="card"><div class="chart" id="chart-night"></div></div>' + notes +
+    '<p class="grp">Grabaciones' + (n ? ' · ' + n : '') + '</p>' +
+    '<ul class="list clips">' + (n ? clipRows(r, 999) : '<li class="empty-row">' + noClipsText(r) + '</li>') + '</ul>' +
+    '<button class="btn danger block" type="button" id="del-night">' + ICON.trash + 'Eliminar esta noche</button>'
+  );
+  var seg = $('[data-seg="nightMode"]', sh.panel), chart = $('#chart-night', sh.panel);
+  setSeg(seg, mode);
+  hoursChart(chart, r, mode);
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    mode = b.getAttribute('data-v'); setSeg(seg, mode); hoursChart(chart, r, mode);
+  });
+  var del = $('#del-night', sh.panel), armT = 0;
+  del.addEventListener('click', function () {
+    if (!del.classList.contains('armed')) {
+      del.classList.add('armed'); del.lastChild.textContent = 'Toca otra vez para eliminar';
+      armT = setTimeout(function () { del.classList.remove('armed'); del.lastChild.textContent = 'Eliminar esta noche'; }, 3500);
+      return;
+    }
+    clearTimeout(armT);
+    Player.stop();
+    deleteNight(r).then(function () { sh.close(); toast('Noche eliminada.'); render(); });
+  });
+  Player.paint();
+}
+
+// ── Opciones de una grabación ───────────────────────────────────────────────────
+function clipSheet(id, nightId) {
+  var r = null, c = null;
+  nights.forEach(function (x) { if (x.id === nightId) r = x; });
+  if (r) (r.clips || []).forEach(function (x) { if (x.id === id) c = x; });
+  if (!c) return;
+  var file = null;
+  DB.get('audio', id).then(function (a) {
+    if (!a) return;
+    var d = new Date(c.t);
+    var name = 'ronquido-' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.wav';
+    try { file = new File([a.buf], name, { type: 'audio/wav' }); } catch (e) { file = new Blob([a.buf], { type: 'audio/wav' }); file.name = name; }
+  });
+  var sh = openSheet(
+    '<div class="p-head"><div><h2>Grabación de las ' + hm(c.t) + '</h2><p class="sub">' + cap(dayShort(nightDay(r))) + ' · ' + fmtSec(c.dur) + ' · ' + c.n + ' ' + plural(c.n, 'ronquido', 'ronquidos') + '</p></div></div>' +
+    '<ul class="list"><li><button class="act" type="button" id="c-share">' + ICON.share + 'Compartir o guardar</button></li>' +
+    '<li><button class="act neg" type="button" id="c-del">' + ICON.trash + 'Eliminar grabación</button></li></ul>' +
+    '<button class="btn tonal block" type="button" data-close>Cancelar</button>'
+  );
+  $('#c-share', sh.panel).addEventListener('click', function () {
+    if (!file) { toast('Este audio ya no está guardado.'); return; }
+    var data = { files: [file], title: 'Ronquido ' + hm(c.t) };
+    if (navigator.canShare && navigator.canShare(data)) {
+      navigator.share(data).then(function () { sh.close(); }).catch(function () {});
+    } else {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(file); a.download = file.name || 'ronquido.wav';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      sh.close();
+    }
+  });
+  $('#c-del', sh.panel).addEventListener('click', function () {
+    if (Player.id === id) Player.stop();
+    r.clips = r.clips.filter(function (x) { return x.id !== id; });
+    Promise.all([DB.del('audio', id), DB.put('nights', r)]).then(function () {
+      closeAllSheets(); toast('Grabación eliminada.'); render();
+    });
+  });
+}
+
+// ── Reproductor ─────────────────────────────────────────────────────────────────
+var Player = {
+  el: $('#player'), id: null, url: null,
+  toggle: function (id) {
+    var self = this, el = this.el;
+    if (this.id === id) { if (el.paused) el.play().catch(function () {}); else el.pause(); return; }
+    this.stop();
+    this.id = id;
+    DB.get('audio', id).then(function (a) {
+      if (self.id !== id) return;
+      if (!a) { self.id = null; toast('Este audio ya no está guardado.'); self.paint(); return; }
+      self.url = URL.createObjectURL(new Blob([a.buf], { type: 'audio/wav' }));
+      el.src = self.url;
+      return el.play();
+    }).catch(function () { toast('No se pudo reproducir el audio.'); self.stop(); });
+    this.paint();
+  },
+  stop: function () {
+    var el = this.el;
+    try { el.pause(); } catch (e) {}
+    if (this.url) { URL.revokeObjectURL(this.url); this.url = null; }
+    el.removeAttribute('src');
+    try { el.load(); } catch (e) {}
+    this.id = null;
+    this.paint();
+  },
+  paint: function () {
+    var id = this.id, playing = id && !this.el.paused;
+    $$('[data-act="play"]').forEach(function (b) {
+      var on = b.getAttribute('data-id') === id && playing;
+      b.classList.toggle('on', !!on);
+      b.innerHTML = on ? ICON.pause : ICON.play;
+    });
+    $$('[data-clip]').forEach(function (row) {
+      var p = $('.prog', row);
+      if (p) p.hidden = row.getAttribute('data-clip') !== id;
+    });
+  },
+  progress: function () {
+    var el = this.el, id = this.id;
+    if (!id || !el.duration) return;
+    var pct = clamp(el.currentTime / el.duration * 100, 0, 100);
+    $$('[data-clip="' + id + '"] .prog span').forEach(function (s) { s.style.width = pct + '%'; });
+  }
+};
+Player.el.addEventListener('play', function () { Player.paint(); });
+Player.el.addEventListener('pause', function () { Player.paint(); });
+Player.el.addEventListener('timeupdate', function () { Player.progress(); });
+Player.el.addEventListener('ended', function () { Player.stop(); });
+
+// ── Micrófono ───────────────────────────────────────────────────────────────────
+var WORKLET = "class Captura extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(4096);this.n=0}" +
+  "process(i){var c=i[0]&&i[0][0];if(c){if(this.n+c.length>this.b.length)this.flush();this.b.set(c,this.n);this.n+=c.length;if(this.n>=2048)this.flush()}return true}" +
+  "flush(){var o=this.b.slice(0,this.n);this.n=0;this.port.postMessage(o,[o.buffer])}}registerProcessor('captura',Captura);";
+var AC = window.AudioContext || window.webkitAudioContext;
+
+function micSupported() { return !!(AC && navigator.mediaDevices && navigator.mediaDevices.getUserMedia); }
+function getStream() {
+  return navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
+    video: false
+  });
+}
+// Se llama dentro del toque: crea el contexto de audio antes de pedir el micrófono
+function micBegin() {
+  try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
+  var ctx = new AC();
+  try { ctx.resume(); } catch (e) {}
+  return ctx;
+}
+function micOpen(ctx, onBlock) {
+  var m = { ctx: ctx, stream: null, src: null, node: null, mute: null };
+  return getStream().then(function (stream) {
+    m.stream = stream;
+    m.mute = ctx.createGain(); m.mute.gain.value = 0; m.mute.connect(ctx.destination);
+    var viaWorklet = ctx.audioWorklet ? (function () {
+      var url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
+      return ctx.audioWorklet.addModule(url).then(function () {
+        var node = new AudioWorkletNode(ctx, 'captura', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+        node.port.onmessage = function (e) { onBlock(e.data); };
+        return node;
+      });
+    })() : Promise.reject();
+    return viaWorklet.catch(function () {
+      var node = ctx.createScriptProcessor(2048, 1, 1);
+      node.onaudioprocess = function (e) { onBlock(new Float32Array(e.inputBuffer.getChannelData(0))); };
+      return node;
+    });
+  }).then(function (node) {
+    m.node = node;
+    m.src = ctx.createMediaStreamSource(m.stream);
+    m.src.connect(node); node.connect(m.mute);
+    if (ctx.state !== 'running') return ctx.resume().catch(function () {}).then(function () { return m; });
+    return m;
+  }).catch(function (err) { micClose(m); throw err; });
+}
+// Vuelve a pedir el micrófono (por ejemplo, después de una llamada) sin rehacer el resto
+function micReopen(m) {
+  return getStream().then(function (stream) {
+    try { m.src && m.src.disconnect(); } catch (e) {}
+    if (m.stream) m.stream.getTracks().forEach(function (t) { t.stop(); });
+    m.stream = stream;
+    m.src = m.ctx.createMediaStreamSource(stream);
+    m.src.connect(m.node);
+    return m.ctx.resume().catch(function () {});
+  });
+}
+function micTrackLive(m) {
+  var t = m && m.stream && m.stream.getAudioTracks()[0];
+  return !!t && t.readyState === 'live';
+}
+function micClose(m) {
+  if (!m) return;
+  try { if (m.node && m.node.port) m.node.port.onmessage = null; } catch (e) {}
+  try { m.src && m.src.disconnect(); } catch (e) {}
+  try { m.node && m.node.disconnect(); } catch (e) {}
+  if (m.stream) m.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+  try { m.ctx && m.ctx.close(); } catch (e) {}
+  try { if (navigator.audioSession) navigator.audioSession.type = 'auto'; } catch (e) {}
+}
+function micErrorSheet(err) {
+  var name = err && err.name;
+  var msg = name === 'NotAllowedError' || name === 'SecurityError'
+    ? '<p class="hint">La app necesita el micrófono para escuchar los ronquidos. Vuelve a tocar «Empezar la noche» y elige «Permitir».</p><p class="hint">Si no aparece la pregunta, revisa en Ajustes del iPhone › Apps › Safari › Micrófono que esté en «Preguntar» o «Permitir».</p>'
+    : name === 'NotFoundError' ? '<p class="hint">No se encontró un micrófono en este equipo.</p>'
+    : '<p class="hint">No se pudo abrir el micrófono' + (name ? ' (' + name + ')' : '') + '. Cierra la app, ábrela de nuevo y vuelve a intentarlo.</p>';
+  infoSheet('Sin acceso al micrófono', msg);
+}
+
+// ── Pantalla encendida toda la noche ────────────────────────────────────────────
+// Usa el bloqueo de pantalla del sistema; en iPhones antiguos (o como app de inicio antes de iOS 18.4, donde ese
+// bloqueo no funcionaba) además reproduce un video negro y mudo de 2 s en bucle, que también evita que se apague.
+var Awake = {
+  lock: null, video: $('#nosleep'),
+  needVideo: function () {
+    if (!('wakeLock' in navigator)) return true;
+    var m = navigator.userAgent.match(/OS (\d+)_(\d+)/);
+    if (!m) return false;
+    var v = +m[1] + (+m[2]) / 100;
+    return !!navigator.standalone && v < 18.04;
+  },
+  on: function () {
+    var self = this;
+    if (this.needVideo()) { try { var p = this.video.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
+    if ('wakeLock' in navigator && !this.lock) {
+      navigator.wakeLock.request('screen').then(function (l) {
+        self.lock = l;
+        l.addEventListener('release', function () { if (self.lock === l) self.lock = null; });
+      }).catch(function () {
+        try { var p2 = self.video.play(); if (p2 && p2.catch) p2.catch(function () {}); } catch (e) {}
+      });
+    }
+  },
+  off: function () {
+    try { if (this.lock) this.lock.release(); } catch (e) {}
+    this.lock = null;
+    try { this.video.pause(); } catch (e) {}
+  }
+};
+
+// ── La noche ────────────────────────────────────────────────────────────────────
+var Run = null;
+
+function setThemeColor(c) {
+  $$('meta[name="theme-color"]').forEach(function (m) {
+    if (!m.getAttribute('data-orig')) m.setAttribute('data-orig', m.getAttribute('content'));
+    m.setAttribute('content', c || m.getAttribute('data-orig'));
+  });
+}
+function nextAt(hhmm, from) {
+  var p = String(hhmm || '07:30').split(':'), d = new Date(from + MIN);
+  d.setHours(+p[0] || 0, +p[1] || 0, 0, 0);
+  if (d.getTime() <= from + 30 * MIN) d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+
+function startNight() {
+  if (Run) return;
+  if (!micSupported()) { infoSheet('Sin micrófono', '<p class="hint">Este navegador no permite usar el micrófono. Abre la app en Safari en el iPhone.</p>'); return; }
+  Player.stop();
+  closeAllSheets();
+  var ctx;
+  try { ctx = micBegin(); } catch (e) { micErrorSheet(e); return; }
+  Awake.on();
+  Run = { ctx: ctx, mic: null, det: null, rec: null, clip: null, lastClipT: -Infinity, timers: [], lastBlock: 0,
+    lastTouch: Date.now(), listenFrom: 0, stopAt: null, drift: 0, meterTick: 0, warn: '', saving: null };
+  showNight();
+  nightStatus('Preparando el micrófono…', 'wait');
+  camIdle().then(function () { return micOpen(ctx, onBlock); }).then(function (mic) {
+    if (!Run) { micClose(mic); return; }
+    Run.mic = mic;
+    var now = Date.now();
+    Run.listenFrom = now + cfg.delay * MIN;
+    Run.stopAt = cfg.stopOn ? nextAt(cfg.stopAt, Run.listenFrom) : null;
+    Run.det = new Detector(ctx.sampleRate, { sens: cfg.sens, on: onDet });
+    Run.det.armed = cfg.delay === 0;
+    Run.lastBlock = now;
+    Run.rec = { id: uid('n'), v: 1, start: Run.listenFrom, end: Run.listenFrom, upd: now, live: true, sens: cfg.sens,
+      min: {}, snores: 0, episodes: 0, longest: 0, gaps: [], clips: [], noAudio: !cfg.audio };
+    ctx.onstatechange = function () { if (Run && Run.ctx === ctx && ctx.state !== 'running') ctx.resume().catch(function () {}); };
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {});
+    Run.timers.push(setInterval(tick, 1000));
+    Run.timers.push(setInterval(saveRun, 60000));
+    tick();
+  }).catch(function (err) {
+    Awake.off();
+    try { ctx.close(); } catch (e) {}
+    Run = null;
+    hideNight();
+    syncStandby();
+    micErrorSheet(err);
+  });
+}
+
+function onBlock(x) {
+  if (!Run || !Run.det || Run.paused) return;
+  var now = Date.now();
+  if (Run.lastBlock && now - Run.lastBlock > 5000) addGap(Run.lastBlock, now);
+  Run.lastBlock = now;
+  Run.det.push(x, now);
+}
+function addGap(a, b) {
+  var r = Run.rec;
+  a = Math.max(a, r.start);
+  if (b - a < 5000) return;
+  var last = r.gaps[r.gaps.length - 1];
+  if (last && a - last[1] < 60000) last[1] = Math.max(last[1], b);
+  else r.gaps.push([a, b]);
+}
+
+function onDet(type, d) {
+  var R = Run;
+  if (!R || !R.rec) return;
+  var det = R.det, rec = R.rec;
+  if (type === 'frame') {
+    if (det.clipFull()) finishClip(null);
+    if (++R.meterTick % 3 === 0) {
+      var lv = $('#n-level');
+      if (d.floor !== null) {
+        var over = d.L - d.floor;
+        lv.style.width = clamp(over / 30 * 100, 0, 100).toFixed(0) + '%';
+        lv.classList.toggle('snore', over > det.thr && d.r >= det.minRatio);
+      }
+    }
+  } else if (type === 'episode') {
+    rec.episodes++;
+    if (cfg.audio && !det.rec && rec.clips.length < MAX_CLIPS) startClip(d.s0, d.t0, 0);
+  } else if (type === 'snore') {
+    var m = Math.floor(d.t0 / MIN), b = rec.min[m] || (rec.min[m] = [0, 0]);
+    b[0]++; b[1] = Math.max(b[1], Math.round(d.over));
+    rec.snores++;
+    if (R.clip) R.clip.n++;
+    else if (cfg.audio && det.ep && !det.rec && rec.clips.length < MAX_CLIPS && d.t0 - R.lastClipT >= MID_CLIP_GAP) startClip(d.s0, d.t0, 1);
+  } else if (type === 'episodeEnd') {
+    rec.longest = Math.max(rec.longest, d.last - d.t0);
+    if (R.clip) finishClip(d.lastS + 2 * det.rate);
+  }
+}
+function startClip(s0, t0, n) {
+  var det = Run.det, from = s0 - PRE_S * det.rate;
+  var c = det.startClip(from, CLIP_MAX_S);
+  Run.clip = { t: t0 - (s0 - c.s0) / det.rate * 1000, n: n };
+  Run.lastClipT = Run.clip.t;
+}
+function finishClip(sEnd) {
+  var R = Run, det = R.det, c = R.clip;
+  R.clip = null;
+  var out = det.stopClip(sEnd);
+  if (!c || !out || out.data.length < det.rate * 2) return;
+  var id = uid('c'), rate = Math.round(det.rate);
+  var buf = encodeWav(out.data, rate);
+  var meta = { id: id, t: Math.round(c.t), dur: Math.round(out.data.length / det.rate), n: c.n };
+  var rec = R.rec;
+  DB.put('audio', { id: id, night: rec.id, buf: buf }).then(function () {
+    rec.clips.push(meta);
+    rec.clips.sort(function (a, b) { return a.t - b.t; });
+    if (Run && Run.rec === rec) saveRun();
+    else DB.put('nights', rec).catch(function () {});
+  }).catch(function () {});
+}
+function saveRun() {
+  if (!Run || !Run.rec) return Promise.resolve();
+  var now = Date.now();
+  if (now < Run.listenFrom) return Promise.resolve();
+  Run.rec.upd = now; Run.rec.end = now;
+  return DB.put('nights', Run.rec).catch(function () {});
+}
+
+function tick() {
+  var R = Run;
+  if (!R || !R.det) return;
+  var now = Date.now(), rec = R.rec, det = R.det;
+  $('#n-clock').textContent = hm(now);
+  var at = (window.Reposo && window.Reposo.nextAlarmText) ? window.Reposo.nextAlarmText() : '';
+  var ae = $('#n-alarm'); ae.hidden = !at; ae.textContent = at;
+  if (!det.armed && now >= R.listenFrom) det.armed = true;
+  // avisos: sin sonido del micrófono o pantalla sin bloqueo
+  var warn = '';
+  var silent = !R.paused && now - R.lastBlock > 8000;
+  if (silent) {
+    warn = 'No está llegando sonido del micrófono.';
+    if (R.ctx.state !== 'running') R.ctx.resume().catch(function () {});
+    if (!micTrackLive(R.mic) && !R.reopening) {
+      R.reopening = true;
+      micReopen(R.mic).then(function () { R.reopening = false; }, function () { R.reopening = false; });
+    }
+  }
+  setWarn(warn, silent);
+  // estado y cifras
+  if (now < R.listenFrom) {
+    nightStatus('Empieza a escuchar a las ' + hm(R.listenFrom), 'wait');
+    $('#n-line').textContent = 'Puedes dejar el iPhone y dormir';
+  } else {
+    nightStatus(R.paused ? 'Micrófono en pausa · suena la alarma' : ((R.clip ? 'Grabando' : 'Escuchando') + ' · ' + fmtDur(now - R.listenFrom)), R.paused ? 'wait' : R.clip ? 'rec' : '');
+    var mins = Object.keys(rec.min).length;
+    $('#n-line').textContent = rec.snores
+      ? fmtInt(rec.snores) + ' ' + plural(rec.snores, 'ronquido', 'ronquidos') + ' · ' + mins + ' min roncando'
+      : (det.floor === null ? 'Midiendo el silencio…' : 'Sin ronquidos por ahora');
+  }
+  syncStandby();
+  if (R.stopAt && now >= R.stopAt) { finishNight('auto'); return; }
+  // se atenúa sola y se mueve un poco cada minuto para cuidar la pantalla
+  $('#rq-night').classList.toggle('dim', now - R.lastTouch > 20000);
+  if (Math.floor(now / MIN) !== R.drift) {
+    R.drift = Math.floor(now / MIN);
+    var k = R.drift % 8, dx = [0, 6, -6, 4, -4, 8, -8, 2][k], dy = [0, -8, 6, 10, -10, 4, -4, 8][k];
+    $('#n-wrap').style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+  }
+}
+function nightStatus(text, kind) {
+  $('#n-status').textContent = text;
+  var dot = $('#n-dot');
+  dot.className = 'n-dot' + (kind ? ' ' + kind : '');
+}
+function setWarn(text, canResume) {
+  var w = $('#n-warn');
+  w.hidden = !text; w.textContent = text;
+  $('#n-resume').hidden = !canResume;
+}
+
+function finishNight(reason) {
+  var R = Run;
+  if (!R) return;
+  Run = null;
+  R.timers.forEach(clearInterval);
+  var now = Date.now();
+  if (R.det) {
+    if (R.det.ep) R.rec.longest = Math.max(R.rec.longest, R.det.ep.last - R.det.ep.t0);
+    if (R.clip) { Run = R; finishClip(R.det.ep ? R.det.ep.lastS + 2 * R.det.rate : null); Run = null; }
+  }
+  micClose(R.mic || { ctx: R.ctx });
+  Awake.off();
+  hideNight();
+  syncStandby();
+  var rec = R.rec;
+  if (!rec) return;
+  if (R.lastBlock && now - R.lastBlock > 5000) { Run = R; addGap(R.lastBlock, now); Run = null; }
+  var heard = now - rec.start;
+  if (now < R.listenFrom || (heard < 2 * MIN && !rec.snores)) {
+    deleteNight(rec).then(render);
+    toast('La noche fue muy corta y no se guardó.');
+    return;
+  }
+  rec.end = now; rec.upd = now; rec.live = false;
+  // espera a que terminen de guardarse las grabaciones pendientes
+  setTimeout(function () {
+    DB.put('nights', rec).then(prune).then(render).then(function () {
+      var s = stats(rec);
+      toast(reason === 'auto' ? 'Noche terminada a las ' + hm(now) + '.' : reason === 'alarm' ? 'Noche terminada con la alarma a las ' + hm(now) + '.' : s.min ? 'Noche guardada: ' + s.min + ' min roncando.' : 'Noche guardada, sin ronquidos.');
+    });
+  }, 400);
+}
+
+function showNight() {
+  var n = $('#rq-night');
+  n.hidden = false; n.classList.remove('dim');
+  lockPage(true);
+  setThemeColor('#000000');
+  $('#n-clock').textContent = hm(Date.now());
+  $('#n-line').innerHTML = '&nbsp;';
+  $('#n-level').style.width = '0';
+  setWarn('', false);
+}
+function hideNight() {
+  $('#rq-night').hidden = true;
+  $('#n-wrap').style.transform = '';
+  if (!sheetStack.length) lockPage(false);
+  setThemeColor(null);
+}
+
+// Al cerrar la app a mitad de la noche, la noche queda abierta: se cierra al volver a abrirla
+function recover() {
+  return DB.all('nights').then(function (all) {
+    var jobs = [], cut = null;
+    all.forEach(function (r) {
+      if (!r.live) return;
+      r.live = false; r.end = r.upd || r.start;
+      if (r.end - r.start < 2 * MIN && !r.snores) jobs.push(deleteNight(r));
+      else { r.cut = true; cut = r; jobs.push(DB.put('nights', r)); }
+    });
+    return Promise.all(jobs).then(function () {
+      if (cut) toast('La app se cerró durante la noche; quedó guardada hasta las ' + hm(cut.end) + '.', 5000);
+    });
+  }).catch(function () {});
+}
+
+// Mantener presionado para terminar (pantalla de la noche y botón del modo reposo)
+bindHold($('#n-hold'));
+bindHold(document.getElementById('sbEnd'));
+$('#rq-night').addEventListener('pointerdown', function () {
+  if (!Run) return;
+  Run.lastTouch = Date.now();
+  $('#rq-night').classList.remove('dim');
+});
+$('#n-resume').addEventListener('click', function () {
+  var R = Run;
+  if (!R || !R.mic || R.paused) return;
+  Awake.on();
+  R.ctx.resume().catch(function () {});
+  if (!micTrackLive(R.mic)) micReopen(R.mic).catch(function (err) { micErrorSheet(err); });
+});
+
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden) {
+    if (Run) saveRun();
+    if (!Player.el.paused) Player.el.pause();
+    return;
+  }
+  if (!Run || !Run.mic || Run.paused) return;
+  Awake.on();
+  Run.ctx.resume().catch(function () {});
+  if (!micTrackLive(Run.mic)) micReopen(Run.mic).catch(function () {});
+});
+window.addEventListener('pagehide', function () { if (Run) saveRun(); });
+
+// ── Probar la detección ─────────────────────────────────────────────────────────
+function testSheet() {
+  if (Run) return;
+  if (!micSupported()) { infoSheet('Sin micrófono', '<p class="hint">Este navegador no permite usar el micrófono. Abre la app en Safari en el iPhone.</p>'); return; }
+  Player.stop();
+  var ctx;
+  try { ctx = micBegin(); } catch (e) { micErrorSheet(e); return; }
+  var T = { ctx: ctx, mic: null, det: null, sounds: [], confirmed: 0, tick: 0 };
+  var sh = openSheet(
+    '<div class="p-head"><div><h2>Probar la detección</h2><p class="sub">Ronca o imita un ronquido, a un metro del iPhone, unas cuantas veces seguidas.</p></div>' +
+    '<button class="p-done" type="button" data-close>Listo</button></div>' +
+    '<div class="card"><div class="rq-meter"><div class="m-track"><span class="m-fill" id="t-fill"></span><i class="m-thr" id="t-thr"></i></div>' +
+    '<div class="m-lab"><span id="t-state">Abriendo el micrófono…</span><span>Tono grave <b id="t-ratio">—</b></span></div></div></div>' +
+    '<p class="note" id="t-conf">Cuando reconozca tres ronquidos con ritmo de respiración, aparecerá aquí.</p>' +
+    '<p class="grp">Últimos sonidos</p><ul class="list" id="t-list"><li class="empty-row">Todavía nada.</li></ul>' +
+    '<p class="hint">Sensibilidad: <b>' + cap(cfg.sens) + '</b>. La línea del medidor marca desde dónde un sonido cuenta. Si tus ronquidos no aparecen, sube la sensibilidad en Ajustes.</p>',
+    function () { micClose(T.mic || { ctx: ctx }); T.closed = true; }
+  );
+  function onT(type, d) {
+    if (T.closed) return;
+    if (type === 'frame') {
+      if (++T.tick % 2) return;
+      var fill = $('#t-fill', sh.panel);
+      if (d.floor === null) { $('#t-state', sh.panel).textContent = 'Midiendo el silencio…'; return; }
+      var over = d.L - d.floor;
+      fill.style.width = clamp(over / 30 * 100, 0, 100).toFixed(0) + '%';
+      fill.classList.toggle('snore', over > T.det.thr && d.r >= T.det.minRatio);
+      $('#t-thr', sh.panel).style.left = (T.det.thr / 30 * 100) + '%';
+      $('#t-state', sh.panel).textContent = over > T.det.thr ? 'Sonido' : 'Silencio';
+      $('#t-ratio', sh.panel).textContent = Math.round(d.r * 100) + ' %';
+    } else if (type === 'sound') {
+      T.sounds.unshift(d);
+      T.sounds = T.sounds.slice(0, 6);
+      $('#t-list', sh.panel).innerHTML = T.sounds.map(function (s) {
+        var why = s.long ? 'Sonido largo (fondo)' : s.snore ? 'Parece ronquido' : s.dur < 250 ? 'Muy corto' : s.dur > 3500 ? 'Muy largo' : s.ratio < T.det.minRatio ? 'Poco grave' : 'Muy suave';
+        return '<li class="kv"><span>' + (s.dur / 1000).toLocaleString('es-CL', { maximumFractionDigits: 1 }) + ' s · grave ' + Math.round(s.ratio * 100) + ' %</span>' +
+          '<span class="tag' + (s.snore ? ' yes' : '') + '">' + why + '</span></li>';
+      }).join('');
+    } else if (type === 'episode') {
+      T.confirmed++;
+      var c = $('#t-conf', sh.panel);
+      c.className = 'note pos';
+      c.textContent = 'Ronquido reconocido' + (T.confirmed > 1 ? ' (' + T.confirmed + ' veces)' : '') + '. Así se contará durante la noche.';
+    }
+  }
+  micOpen(ctx, function (x) { if (T.det && !T.closed) T.det.push(x, Date.now()); }).then(function (mic) {
+    if (T.closed) { micClose(mic); return; }
+    T.mic = mic;
+    T.det = new Detector(ctx.sampleRate, { sens: cfg.sens, on: onT });
+  }).catch(function (err) {
+    T.closed = true;
+    sh.close();
+    micErrorSheet(err);
+  });
+}
+
+// ── Ajustes ─────────────────────────────────────────────────────────────────────
+function settingsSheet() {
+  var sh = openSheet(
+    '<div class="p-head"><div><h2>Ajustes</h2></div><button class="p-done" type="button" data-close>Listo</button></div>' +
+    '<p class="grp">Detección</p>' +
+    '<ul class="list"><li class="opt"><span>Sensibilidad</span><div class="seg wide" role="group" aria-label="Sensibilidad" data-seg="sens">' +
+    '<button type="button" data-v="baja">Baja</button><button type="button" data-v="media">Media</button><button type="button" data-v="alta">Alta</button></div></li></ul>' +
+    '<p class="hint">Alta reconoce ronquidos más suaves, pero puede confundir otros sonidos graves. Baja cuenta solo los más claros.</p>' +
+    '<button class="btn tonal block" type="button" data-act="test">Probar la detección</button>' +
+    '<p class="grp">Grabaciones</p>' +
+    '<ul class="list"><li class="kv"><span>Grabar los ronquidos</span><label class="sw"><input type="checkbox" data-cfg="audio"' + (cfg.audio ? ' checked' : '') + ' aria-label="Grabar los ronquidos"><span></span></label></li>' +
+    '<li class="opt"><span>Conservar los audios de</span><div class="seg wide" role="group" aria-label="Conservar audios" data-seg="keep">' +
+    '<button type="button" data-v="7">7 noches</button><button type="button" data-v="14">14 noches</button><button type="button" data-v="30">30 noches</button></div></li></ul>' +
+    '<p class="hint">Se guarda un trozo de hasta ' + CLIP_MAX_S + ' s de cada episodio (máximo ' + MAX_CLIPS + ' por noche). Las cifras y el gráfico de cada noche se guardan siempre.</p>' +
+    '<p class="grp">La noche</p>' +
+    '<ul class="list"><li class="opt"><span>Empezar a escuchar</span><div class="seg wide" role="group" aria-label="Empezar a escuchar" data-seg="delay">' +
+    '<button type="button" data-v="0">De inmediato</button><button type="button" data-v="15">En 15 min</button><button type="button" data-v="30">En 30 min</button></div></li>' +
+    '<li class="kv"><span>Terminar sola</span><label class="sw"><input type="checkbox" data-cfg="stopOn"' + (cfg.stopOn ? ' checked' : '') + ' aria-label="Terminar sola"><span></span></label></li>' +
+    '<li class="kv" id="row-stop"' + (cfg.stopOn ? '' : ' hidden') + '><span>A las</span><input class="time" type="time" id="stop-at" value="' + cfg.stopAt + '"></li>' +
+    '<li class="kv"><span>Terminar al detener la alarma</span><label class="sw"><input type="checkbox" data-cfg="endOnAlarm"' + (cfg.endOnAlarm ? ' checked' : '') + ' aria-label="Terminar al detener la alarma"><span></span></label></li></ul>' +
+    '<p class="hint">Mientras suena la alarma el micrófono queda en pausa. Si lo activas, al detenerla la noche se guarda y termina; al posponerla, la escucha sigue.</p>' +
+    '<p class="grp">Datos</p>' +
+    '<ul class="list"><li class="kv"><span>Noches guardadas</span><span>' + nights.length + '</span></li>' +
+    '<li class="kv"><span>Grabaciones</span><span id="st-audio">…</span></li></ul>' +
+    '<button class="btn danger block" type="button" id="wipe">' + ICON.trash + 'Borrar todo</button>' +
+    '<p class="hint">Todo queda guardado solo en este iPhone.</p>'
+  );
+  setSeg($('[data-seg="sens"]', sh.panel), cfg.sens);
+  setSeg($('[data-seg="keep"]', sh.panel), String(cfg.keep));
+  setSeg($('[data-seg="delay"]', sh.panel), String(cfg.delay));
+  var nClips = 0;
+  nights.forEach(function (r) { nClips += (r.clips || []).length; });
+  var stA = $('#st-audio', sh.panel);
+  stA.textContent = String(nClips);
+  if (navigator.storage && navigator.storage.estimate) {
+    navigator.storage.estimate().then(function (e) { if (e && e.usage) stA.textContent = nClips + ' · ' + fmtMB(e.usage); }).catch(function () {});
+  }
+  sh.panel.addEventListener('change', function (e) {
+    var k = e.target.getAttribute('data-cfg');
+    if (k) {
+      cfg[k] = e.target.checked; saveCfg();
+      if (k === 'stopOn') $('#row-stop', sh.panel).hidden = !cfg.stopOn;
+    }
+    if (e.target.id === 'stop-at' && e.target.value) { cfg.stopAt = e.target.value; saveCfg(); }
+  });
+  sh.panel.addEventListener('click', function (e) {
+    var b = e.target.closest('.seg button');
+    if (!b) return;
+    var seg = b.parentNode, key = seg.getAttribute('data-seg'), v = b.getAttribute('data-v');
+    cfg[key] = key === 'sens' ? v : +v;
+    saveCfg(); setSeg(seg, v);
+    if (key === 'keep') prune().then(render);
+  });
+  var wipe = $('#wipe', sh.panel), armT = 0;
+  wipe.addEventListener('click', function () {
+    if (!wipe.classList.contains('armed')) {
+      wipe.classList.add('armed'); wipe.lastChild.textContent = 'Toca otra vez para borrar todo';
+      armT = setTimeout(function () { wipe.classList.remove('armed'); wipe.lastChild.textContent = 'Borrar todo'; }, 3500);
+      return;
+    }
+    clearTimeout(armT);
+    Player.stop();
+    Promise.all([DB.clear('nights'), DB.clear('audio')]).then(function () { sh.close(); toast('Se borraron todas las noches.'); render(); });
+  });
+}
+
+// ── Acciones ────────────────────────────────────────────────────────────────────
+document.addEventListener('click', function (e) {
+  var seg = e.target.closest('#app .seg button');
+  if (seg) {
+    var key = seg.parentNode.getAttribute('data-seg'), v = seg.getAttribute('data-v');
+    if (key === 'hourMode') { cfg.hourMode = v; saveCfg(); renderHours(); }
+    if (key === 'hist') { cfg.hist = +v; saveCfg(); renderHist(); }
+    return;
+  }
+  var b = e.target.closest('[data-act]');
+  if (!b) return;
+  var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
+  if (act === 'start') startNight();
+  else if (act === 'settings') settingsSheet();
+  else if (act === 'test') { closeAllSheets(); testSheet(); }
+  else if (act === 'night') nightSheet(id);
+  else if (act === 'play') Player.toggle(id);
+  else if (act === 'clip') clipSheet(id, b.getAttribute('data-night'));
+  else if (act === 'all-nights') { showAll = true; renderHist(); }
+});
+
+// ── Inicio ──────────────────────────────────────────────────────────────────────
+recover().then(prune).catch(function () {}).then(render);
+// ── Convivencia con el reloj despertador ────────────────────────────────────────
+// Las hojas y la pantalla de la noche bloquean el desplazamiento de la pantalla de ajustes del reloj
+function lockPage(on) { var s = document.getElementById('settings'); if (s) s.style.overflowY = on ? 'hidden' : ''; }
+function camIdle() { return (window.Reposo && window.Reposo.camIdle) ? window.Reposo.camIdle() : Promise.resolve(); }
+// En horizontal se ve el reloj: ahí se muestra que la escucha sigue y el botón para terminar
+function syncStandby() {
+  var on = !!(Run && Run.det);
+  document.body.classList.toggle('listening', on);
+  var st = document.getElementById('sbListenState'), n = document.getElementById('sbListenN');
+  if (!on || !st || !n) return;
+  var rec = Run.rec, now = Date.now();
+  st.textContent = Run.paused ? 'En pausa' : now < Run.listenFrom ? 'En espera' : Run.clip ? 'Grabando' : 'Escuchando';
+  n.textContent = rec.snores ? fmtInt(rec.snores) + ' ' + plural(rec.snores, 'ronquido', 'ronquidos') : 'Sin ronquidos';
+}
+// Suena una alarma: el micrófono se pausa para que el tono salga por el parlante a todo volumen
+function alarmStart() {
+  var R = Run;
+  if (!R || !R.mic || R.paused) return;
+  R.paused = true;
+  if (R.clip && R.det) finishClip(R.det.ep ? R.det.ep.lastS + 2 * R.det.rate : null);
+  try { R.mic.src && R.mic.src.disconnect(); } catch (e) {}
+  if (R.mic.stream) R.mic.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  saveRun();
+  syncStandby();
+}
+// La alarma se detuvo (finish) o se pospuso: la noche termina o el micrófono se vuelve a abrir
+function alarmEnd(finish) {
+  var R = Run;
+  if (!R || !R.paused) return;
+  if (finish && cfg.endOnAlarm) { finishNight('alarm'); return; }
+  try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
+  R.reopening = true;
+  var done = function () { R.reopening = false; R.paused = false; syncStandby(); };
+  micReopen(R.mic).then(done, done);
+}
+function bindHold(b) {
+  if (!b) return;
+  var t = 0;
+  function down(e) { e.preventDefault(); b.classList.add('hold'); clearTimeout(t); t = setTimeout(function () { b.classList.remove('hold'); finishNight('manual'); }, 1300); }
+  function up() { clearTimeout(t); b.classList.remove('hold'); }
+  b.addEventListener('pointerdown', down);
+  b.addEventListener('pointerup', up);
+  b.addEventListener('pointercancel', up);
+  b.addEventListener('pointerleave', up);
+  b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  b.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!b.classList.contains('hold')) down(e); } });
+  b.addEventListener('keyup', up);
+}
+// Al volver a la pestaña de Ronquidos se redibujan los gráficos con el ancho real
+function showPane() {
+  charts = charts.filter(function (c) { return c.el.isConnected; });
+  charts.forEach(drawChart);
+}
+window.RQ = { alarmStart: alarmStart, alarmEnd: alarmEnd, show: showPane, running: function () { return !!Run; },
+  // Para pruebas en el navegador de escritorio
+  DB: DB, render: render, Detector: Detector };
+
 })();
 </script>
 <script>

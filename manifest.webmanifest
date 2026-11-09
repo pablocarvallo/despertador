@@ -1,7 +1,7 @@
 {
   "name": "Reloj Reposo",
   "short_name": "Reposo",
-  "description": "Reloj despertador de cabecera al estilo del modo En reposo del iPhone.",
+  "description": "Reloj despertador de cabecera al estilo del modo En reposo del iPhone, con registro de ronquidos durante la noche.",
   "lang": "es",
   "start_url": "./",
   "scope": "./",
