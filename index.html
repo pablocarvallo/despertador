@@ -472,6 +472,10 @@ body.show-settings #arm{display:none}
 .rq .act{ width: 100%; min-height: 54px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border: 0; background: transparent; color: var(--ds-tint); font-size: 17px; font-weight: 600; text-align: left; }
 .rq .act:active{ background: var(--ds-fill); }
 .rq .act.neg{ color: var(--ds-neg); }
+.rq .act .grow{ flex: 1; }
+.rq .act small{ font-size: 14px; font-weight: 400; color: var(--ds-ink-2); }
+.rq .txt{ flex: 1; min-width: 0; min-height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--ds-fill-2); color: var(--ds-ink); font-size: 16px; text-align: right; -webkit-appearance: none; appearance: none; }
+.rq .panel .note{ margin: 10px 4px; }
 
 /* Interruptor estilo iOS */
 .rq .sw{ position: relative; width: 51px; height: 31px; flex: none; }
@@ -854,7 +858,22 @@ body.listening #sbEnd{ display: block; }
         <li>Sensibilidad: Alta reconoce ronquidos más suaves, pero puede confundir otros sonidos graves. Baja cuenta solo los más claros.</li>
         <li>Grabaciones: se guarda un trozo de hasta 30 s de cada episodio (máximo 20 por noche). Las cifras y el gráfico de cada noche se guardan siempre.</li>
         <li>Micrófono: si no aparece la pregunta de permiso, revisa en Ajustes del iPhone › Apps › Safari › Micrófono que esté en «Preguntar» o «Permitir».</li>
-        <li>Todo queda guardado solo en este iPhone.</li>
+        <li>Los datos de Ronquidos se guardan en el dispositivo. Para verlos en otros dispositivos hay dos vías, en Ronquidos › Ajustes › Sincronización.</li>
+      </ul>
+      <h3>Sincronización con GitHub</h3>
+      <ul>
+        <li>Se sincronizan las noches (cifras y gráficos) y los ajustes de Ronquidos. Los audios quedan en el dispositivo donde se grabaron.</li>
+        <li>Paso 1: en github.com crea un repositorio privado (por ejemplo «ronquidos-datos») y agrégale un archivo README. Debe ser privado: ahí quedarán tus datos.</li>
+        <li>Paso 2: en GitHub, Settings › Developer settings › Personal access tokens › Fine-grained tokens, crea un token con acceso solo a ese repositorio y el permiso Contents: Read and write.</li>
+        <li>Paso 3: en la app, Ronquidos › Ajustes › Sincronización › GitHub, escribe «usuario/repositorio», pega el token y toca «Guardar y sincronizar». Repite en cada dispositivo con el mismo repositorio.</li>
+        <li>Se sincroniza al abrir la app, al terminar una noche y cada 10 minutos (no durante la escucha). «Sincronizar ahora» lo hace de inmediato.</li>
+        <li>Eliminar una noche o usar «Borrar todo» también las elimina en los demás dispositivos conectados.</li>
+        <li>El token queda guardado solo en el dispositivo. Si lo pierdes o sospechas de él, bórralo en GitHub y crea otro.</li>
+      </ul>
+      <h3>Sincronización con archivo</h3>
+      <ul>
+        <li>«Exportar datos» genera un archivo .json con las noches y los ajustes: guárdalo en Archivos o envíalo por AirDrop.</li>
+        <li>«Importar datos» lee ese archivo en otro dispositivo y lo combina con lo que ya hay, sin duplicar noches.</li>
       </ul>
     </div>
   </div>
@@ -2158,6 +2177,8 @@ var ICON = {
   more: '<svg class="ico fill" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="18.5" cy="12" r="1.8"/></svg>',
   chev: '<svg class="ico r-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>',
   moon: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 14.6A8.2 8.2 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6Z"/></svg>',
+  sync: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.4-4.2M4 4v3.5h3.5M4 13a8 8 0 0 0 14.4 4.2M20 20v-3.5h-3.5"/></svg>',
+  down: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M8 10.5l4 4 4-4M6 12.5v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6"/></svg>',
   share: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M8 7.5l4-4 4 4M6 11.5v7a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-7"/></svg>',
   trash: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l.9 11.6A2 2 0 0 0 9.4 20.5h5.2a2 2 0 0 0 2-1.9L17.5 7M9.5 7V4.5h5V7"/></svg>'
 };
@@ -2168,7 +2189,19 @@ var cfg = (function () {
   try { return Object.assign({}, DEF, JSON.parse(localStorage.getItem('ronquidos-ajustes') || '{}')); }
   catch (e) { return Object.assign({}, DEF); }
 })();
-function saveCfg() { try { localStorage.setItem('ronquidos-ajustes', JSON.stringify(cfg)); } catch (e) {} }
+function saveCfg() { try { localStorage.setItem('ronquidos-ajustes', JSON.stringify(cfg)); localStorage.setItem('ronquidos-ajustes-at', String(Date.now())); } catch (e) {} }
+// Estado de la sincronización: noches borradas (para que no reaparezcan desde otro dispositivo) y datos de la conexión
+var SYNC_KEY = 'ronquidos-sync', DEL_KEY = 'ronquidos-borrados', CFGAT_KEY = 'ronquidos-ajustes-at';
+function lsGet(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+var tomb = lsGet(DEL_KEY, {});
+var syncCfg = lsGet(SYNC_KEY, {});
+function addTomb(ids, at) {
+  var ch = false;
+  ids.forEach(function (id) { if (typeof id === 'string' && /^[\w-]{1,40}$/.test(id) && !tomb[id]) { tomb[id] = typeof at === 'number' ? at : Date.now(); ch = true; } });
+  if (ch) lsSet(DEL_KEY, tomb);
+  return ch;
+}
 
 // ── Base de datos (IndexedDB): noches y audios por separado ─────────────────────
 var DB = (function () {
@@ -2209,7 +2242,8 @@ var DB = (function () {
   };
 })();
 
-function deleteNight(r) {
+function deleteNight(r, silent) {
+  if (!silent) addTomb([r.id]);
   var ps = (r.clips || []).map(function (c) { return DB.del('audio', c.id); });
   ps.push(DB.del('nights', r.id));
   return Promise.all(ps);
@@ -2403,6 +2437,7 @@ function noClipsText(r) {
   if (r.cleared) return 'Los audios de esta noche ya se borraron. Se guardan los de las últimas ' + cfg.keep + ' noches.';
   if (!r.snores) return 'No hubo ronquidos que grabar.';
   if (r.noAudio) return 'Esta noche no se guardó audio (está desactivado en Ajustes).';
+  if (r.remote) return 'Los audios están en el dispositivo donde se grabó la noche.';
   return 'No se guardaron grabaciones.';
 }
 function renderClips() {
@@ -2540,7 +2575,7 @@ function nightSheet(id) {
     }
     clearTimeout(armT);
     Player.stop();
-    deleteNight(r).then(function () { sh.close(); toast('Noche eliminada.'); render(); });
+    deleteNight(r).then(function () { sh.close(); toast('Noche eliminada.'); render(); syncSoon(); });
   });
   Player.paint();
 }
@@ -2944,7 +2979,7 @@ function finishNight(reason) {
   if (R.lastBlock && now - R.lastBlock > 5000) { Run = R; addGap(R.lastBlock, now); Run = null; }
   var heard = now - rec.start;
   if (now < R.listenFrom || (heard < 2 * MIN && !rec.snores)) {
-    deleteNight(rec).then(render);
+    deleteNight(rec, true).then(render);
     toast('La noche fue muy corta y no se guardó.');
     return;
   }
@@ -2952,6 +2987,7 @@ function finishNight(reason) {
   // espera a que terminen de guardarse las grabaciones pendientes
   setTimeout(function () {
     DB.put('nights', rec).then(prune).then(render).then(function () {
+      syncSoon();
       var s = stats(rec);
       toast(reason === 'auto' ? 'Noche terminada a las ' + hm(now) + '.' : reason === 'alarm' ? 'Noche terminada con la alarma a las ' + hm(now) + '.' : s.min ? 'Noche guardada: ' + s.min + ' min roncando.' : 'Noche guardada, sin ronquidos.');
     });
@@ -2982,7 +3018,7 @@ function recover() {
     all.forEach(function (r) {
       if (!r.live) return;
       r.live = false; r.end = r.upd || r.start;
-      if (r.end - r.start < 2 * MIN && !r.snores) jobs.push(deleteNight(r));
+      if (r.end - r.start < 2 * MIN && !r.snores) jobs.push(deleteNight(r, true));
       else { r.cut = true; cut = r; jobs.push(DB.put('nights', r)); }
     });
     return Promise.all(jobs).then(function () {
@@ -3093,11 +3129,24 @@ function settingsSheet() {
     '<li class="kv"><span>Terminar sola</span><label class="sw"><input type="checkbox" data-cfg="stopOn"' + (cfg.stopOn ? ' checked' : '') + ' aria-label="Terminar sola"><span></span></label></li>' +
     '<li class="kv" id="row-stop"' + (cfg.stopOn ? '' : ' hidden') + '><span>A las</span><input class="time" type="time" id="stop-at" value="' + cfg.stopAt + '"></li>' +
     '<li class="kv"><span>Terminar al detener la alarma</span><label class="sw"><input type="checkbox" data-cfg="endOnAlarm"' + (cfg.endOnAlarm ? ' checked' : '') + ' aria-label="Terminar al detener la alarma"><span></span></label></li></ul>' +
+    '<p class="grp">Sincronización</p>' +
+    '<ul class="list"><li><button class="act" type="button" id="sy-gh">' + ICON.sync + '<span class="grow">GitHub</span><small id="sy-state"></small></button></li>' +
+    '<li><button class="act" type="button" id="sy-now">' + ICON.sync + 'Sincronizar ahora</button></li>' +
+    '<li><button class="act" type="button" id="sy-exp">' + ICON.share + 'Exportar datos</button></li>' +
+    '<li><button class="act" type="button" id="sy-imp">' + ICON.down + 'Importar datos</button></li></ul>' +
     '<p class="grp">Datos</p>' +
     '<ul class="list"><li class="kv"><span>Noches guardadas</span><span>' + nights.length + '</span></li>' +
     '<li class="kv"><span>Grabaciones</span><span id="st-audio">…</span></li></ul>' +
-    '<button class="btn danger block" type="button" id="wipe">' + ICON.trash + 'Borrar todo</button>'
+    '<button class="btn danger block" type="button" id="wipe">' + ICON.trash + 'Borrar todo</button>',
+    function () { syncPaint = null; }
   );
+  var syState = $('#sy-state', sh.panel), syNow = $('#sy-now', sh.panel);
+  syncPaint = function () { syState.textContent = syncLabel(); syNow.parentNode.hidden = !syncOn(); };
+  syncPaint();
+  $('#sy-gh', sh.panel).addEventListener('click', githubSheet);
+  syNow.addEventListener('click', function () { toast('Sincronizando…', 1500); runSync().then(function (r) { toast(r.err || 'Sincronizado.'); }); });
+  $('#sy-exp', sh.panel).addEventListener('click', exportData);
+  $('#sy-imp', sh.panel).addEventListener('click', importFile);
   setSeg($('[data-seg="sens"]', sh.panel), cfg.sens);
   setSeg($('[data-seg="keep"]', sh.panel), String(cfg.keep));
   setSeg($('[data-seg="delay"]', sh.panel), String(cfg.delay));
@@ -3133,9 +3182,288 @@ function settingsSheet() {
     }
     clearTimeout(armT);
     Player.stop();
-    Promise.all([DB.clear('nights'), DB.clear('audio')]).then(function () { sh.close(); toast('Se borraron todas las noches.'); render(); });
+    DB.keys('nights').then(function (ids) { addTomb(ids); return Promise.all([DB.clear('nights'), DB.clear('audio')]); })
+      .then(function () { sh.close(); toast('Se borraron todas las noches.'); render(); syncSoon(); });
   });
 }
+
+// ── Sincronización entre dispositivos ───────────────────────────────────────────
+// Se sincronizan las noches (cifras, sin audios) y los ajustes. Dos vías: un repositorio privado de GitHub y un archivo exportable.
+var syncPaint = null, syncing = null, syncT = 0;
+function num(v) { return typeof v === 'number' && isFinite(v); }
+function cleanNight(n) {
+  if (!n || typeof n.id !== 'string' || !/^[\w-]{1,40}$/.test(n.id) || !num(n.start) || !num(n.end) || n.end < n.start) return null;
+  var o = { id: n.id, v: 1, start: n.start, end: n.end, upd: num(n.upd) ? n.upd : n.end, live: false,
+    sens: n.sens === 'baja' || n.sens === 'alta' ? n.sens : 'media', min: {}, snores: num(n.snores) ? n.snores : 0,
+    episodes: num(n.episodes) ? n.episodes : 0, longest: num(n.longest) ? n.longest : 0, gaps: [] };
+  if (n.cut) o.cut = true;
+  if (n.noAudio) o.noAudio = true;
+  if (n.min && typeof n.min === 'object') Object.keys(n.min).forEach(function (k) {
+    var a = n.min[k];
+    if (/^\d{1,9}$/.test(k) && Array.isArray(a) && num(a[0]) && num(a[1])) o.min[k] = [a[0], a[1]];
+  });
+  if (Array.isArray(n.gaps)) n.gaps.forEach(function (g) { if (Array.isArray(g) && num(g[0]) && num(g[1])) o.gaps.push([g[0], g[1]]); });
+  return o;
+}
+function cleanCfg(c) {
+  var o = {};
+  if (!c || typeof c !== 'object') return o;
+  if (c.sens === 'baja' || c.sens === 'media' || c.sens === 'alta') o.sens = c.sens;
+  if (typeof c.audio === 'boolean') o.audio = c.audio;
+  if (c.keep === 7 || c.keep === 14 || c.keep === 30) o.keep = c.keep;
+  if (c.delay === 0 || c.delay === 15 || c.delay === 30) o.delay = c.delay;
+  if (typeof c.stopOn === 'boolean') o.stopOn = c.stopOn;
+  if (typeof c.stopAt === 'string' && /^\d\d:\d\d$/.test(c.stopAt)) o.stopAt = c.stopAt;
+  if (typeof c.endOnAlarm === 'boolean') o.endOnAlarm = c.endOnAlarm;
+  if (c.hourMode === 'min' || c.hourMode === 'n') o.hourMode = c.hourMode;
+  if (c.hist === 14 || c.hist === 30 || c.hist === 90) o.hist = c.hist;
+  return o;
+}
+// Combina datos de otro dispositivo: gana la versión más reciente de cada noche; lo borrado en cualquier lado se borra en todos
+function mergeIn(p) {
+  var res = { added: 0, updated: 0, removed: 0, cfg: false }, jobs = [];
+  var del = p && p.deleted && typeof p.deleted === 'object' ? p.deleted : {};
+  Object.keys(del).forEach(function (id) { addTomb([id], del[id]); });
+  return DB.all('nights').then(function (all) {
+    var local = {};
+    all.forEach(function (r) { local[r.id] = r; });
+    Object.keys(tomb).forEach(function (id) {
+      var r = local[id];
+      if (r && !r.live) { jobs.push(deleteNight(r, true)); res.removed++; delete local[id]; }
+    });
+    var inc = p && p.nights && typeof p.nights === 'object' ? p.nights : {};
+    Object.keys(inc).forEach(function (id) {
+      var n = cleanNight(inc[id]);
+      if (!n || n.id !== id || tomb[id]) return;
+      var l = local[id];
+      if (l && (l.live || (l.upd || 0) >= n.upd)) return;
+      if (l) { n.clips = l.clips || []; if (l.cleared) n.cleared = l.cleared; if (l.remote) n.remote = true; res.updated++; }
+      else { n.clips = []; n.remote = true; res.added++; }
+      jobs.push(DB.put('nights', n));
+    });
+    return Promise.all(jobs);
+  }).then(function () {
+    var c = cleanCfg(p && p.cfg), at = p && p.cfgAt;
+    if (Object.keys(c).length && num(at) && at > lsGet(CFGAT_KEY, 0)) {
+      Object.assign(cfg, c);
+      lsSet('ronquidos-ajustes', cfg); lsSet(CFGAT_KEY, at);
+      res.cfg = true;
+    }
+    return res;
+  });
+}
+function buildPayload() {
+  return DB.all('nights').then(function (all) {
+    var nn = {};
+    all.forEach(function (r) { if (!r.live) nn[r.id] = cleanNight(r); });
+    return { app: 'reposo-ronquidos', v: 1, at: Date.now(), nights: nn, deleted: tomb, cfg: cfg, cfgAt: lsGet(CFGAT_KEY, 0) };
+  });
+}
+
+// ── Archivo ──
+function exportData() {
+  buildPayload().then(function (p) {
+    var d = new Date(), name = 'ronquidos-' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '.json';
+    var txt = JSON.stringify(p), file;
+    try { file = new File([txt], name, { type: 'application/json' }); } catch (e) { file = new Blob([txt], { type: 'application/json' }); file.name = name; }
+    var data = { files: [file], title: 'Ronquidos' };
+    if (navigator.canShare && navigator.canShare(data)) {
+      navigator.share(data).catch(function () {});
+      return;
+    }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(file); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  });
+}
+function importFile() {
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json,application/json,text/plain';
+  inp.addEventListener('change', function () {
+    var f = inp.files && inp.files[0];
+    if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function () {
+      var p = null;
+      try { p = JSON.parse(fr.result); } catch (e) {}
+      if (!p || p.app !== 'reposo-ronquidos' || !p.nights || typeof p.nights !== 'object') { toast('Archivo no válido.'); return; }
+      mergeIn(p).then(function (r) {
+        var t = [];
+        if (r.added) t.push(r.added + ' ' + plural(r.added, 'noche nueva', 'noches nuevas'));
+        if (r.updated) t.push(r.updated + ' ' + plural(r.updated, 'actualizada', 'actualizadas'));
+        if (r.removed) t.push(r.removed + ' ' + plural(r.removed, 'eliminada', 'eliminadas'));
+        if (r.cfg) t.push('ajustes');
+        toast(t.length ? 'Importado: ' + t.join(', ') + '.' : 'Sin cambios.');
+        render(); syncSoon();
+      }).catch(function () { toast('No se pudo importar.'); });
+    };
+    fr.onerror = function () { toast('No se pudo leer el archivo.'); };
+    fr.readAsText(f);
+  });
+  inp.click();
+}
+
+// ── GitHub ──
+function syncOn() { return !!(syncCfg.repo && syncCfg.token); }
+function b64(str) { return btoa(unescape(encodeURIComponent(str))); }
+function unb64(str) { return decodeURIComponent(escape(atob(String(str).replace(/\s/g, '')))); }
+function errText(e) {
+  var c = e && e.status;
+  return c === 0 ? 'Sin conexión' : c === 401 ? 'Token no válido' : c === 403 ? 'Sin permiso con este token' : c === 404 ? 'No se encontró el repositorio' :
+    c === 409 || c === 422 ? 'Conflicto, reintentar' : 'Error de GitHub' + (c ? ' (' + c + ')' : '');
+}
+function gh(method, path, body, raw) {
+  var url = 'https://api.github.com/repos/' + syncCfg.repo + path;
+  if (method === 'GET') url += (path.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now();
+  var h = { 'Authorization': 'Bearer ' + syncCfg.token, 'Accept': raw ? 'application/vnd.github.raw+json' : 'application/vnd.github+json' };
+  if (body) h['Content-Type'] = 'application/json';
+  return fetch(url, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' }).then(function (res) {
+    if (res.ok) return raw ? res.text() : res.json();
+    var e = new Error('http'); e.status = res.status; throw e;
+  }, function () { var e = new Error('net'); e.status = 0; throw e; });
+}
+function pool(items, n, fn) {
+  var i = 0, err = null;
+  function next() {
+    if (err || i >= items.length) return Promise.resolve();
+    return fn(items[i++]).then(next, function (e) { err = e; });
+  }
+  var w = [];
+  for (var k = 0; k < Math.min(n, items.length); k++) w.push(next());
+  return Promise.all(w).then(function () { if (err) throw err; });
+}
+function seq(items, fn) { return items.reduce(function (p, it) { return p.then(function () { return fn(it); }); }, Promise.resolve()); }
+
+function doSync() {
+  var s = syncCfg, remote = {}, meta = null, metaSha = null, got = {}, fetched = [], changed = false;
+  s.shas = s.shas || {}; s.pushed = s.pushed || {};
+  return gh('GET', '/contents/noches').catch(function (e) {
+    if (e.status !== 404) throw e;
+    return gh('GET', '').then(function () { return []; });   // la carpeta aún no existe; si el repositorio no existe, falla aquí
+  }).then(function (list) {
+    (Array.isArray(list) ? list : []).forEach(function (f) {
+      var m = /^([\w-]{1,40})\.json$/.exec(f.name || '');
+      if (m && f.type === 'file') remote[m[1]] = f.sha;
+    });
+    return gh('GET', '/contents/meta.json').then(function (j) {
+      metaSha = j.sha;
+      try { meta = JSON.parse(unb64(j.content)); } catch (e) { meta = null; }
+    }, function (e) { if (e.status !== 404) throw e; });
+  }).then(function () {
+    var del = meta && meta.deleted && typeof meta.deleted === 'object' ? meta.deleted : {};
+    var ids = Object.keys(remote).filter(function (id) { return !tomb[id] && !del[id] && s.shas[id] !== remote[id]; });
+    fetched = ids;
+    return pool(ids, 4, function (id) {
+      return gh('GET', '/contents/noches/' + id + '.json', null, true).then(function (t) {
+        try { got[id] = JSON.parse(t); } catch (e) {}
+      });
+    });
+  }).then(function () {
+    return mergeIn({ nights: got, deleted: meta && meta.deleted, cfg: meta && meta.cfg, cfgAt: meta && meta.cfgAt });
+  }).then(function (res) {
+    changed = res.added + res.updated + res.removed > 0 || res.cfg;
+    fetched.forEach(function (id) { s.shas[id] = remote[id]; });
+    return DB.all('nights');
+  }).then(function (all) {
+    // lo borrado aquí o en otro dispositivo se borra también del repositorio
+    var gone = Object.keys(tomb).filter(function (id) { return remote[id]; });
+    return seq(gone, function (id) {
+      return gh('DELETE', '/contents/noches/' + id + '.json', { message: 'Borrar noche ' + id, sha: remote[id] }).catch(function (e) { if (e.status !== 404) throw e; }).then(function () {
+        delete remote[id]; delete s.shas[id]; delete s.pushed[id];
+      });
+    }).then(function () {
+      // noches nuevas o modificadas aquí
+      var up = all.filter(function (r) {
+        if (r.live || tomb[r.id]) return false;
+        if (got[r.id] && (got[r.id].upd || 0) === r.upd) { s.pushed[r.id] = r.upd; return false; }
+        return s.pushed[r.id] !== r.upd || !remote[r.id];
+      });
+      return seq(up, function (r) {
+        var body = { message: 'Noche ' + r.id, content: b64(JSON.stringify(cleanNight(r))) };
+        if (remote[r.id]) body.sha = remote[r.id];
+        return gh('PUT', '/contents/noches/' + r.id + '.json', body).then(function (j) {
+          var sha = j && j.content && j.content.sha;
+          if (sha) { remote[r.id] = sha; s.shas[r.id] = sha; }
+          s.pushed[r.id] = r.upd;
+        });
+      });
+    });
+  }).then(function () {
+    var at = lsGet(CFGAT_KEY, 0), nT = Object.keys(tomb).length, nM = meta && meta.deleted ? Object.keys(meta.deleted).length : 0;
+    var need = meta ? ((meta.cfgAt || 0) !== at || nT !== nM) : (nT > 0 || at > 0);
+    if (!need) return;
+    var cur = { v: 1, deleted: tomb, cfgAt: at };
+    if (at > 0) cur.cfg = cfg;
+    var body = { message: 'Ajustes', content: b64(JSON.stringify(cur)) };
+    if (metaSha) body.sha = metaSha;
+    return gh('PUT', '/contents/meta.json', body);
+  }).then(function () { return { changed: changed }; });
+}
+function runSync() {
+  if (!syncOn()) return Promise.resolve({ err: 'No conectado' });
+  if (syncing) return syncing;
+  var tries = 0;
+  function attempt() {
+    tries++;
+    return doSync().catch(function (e) {
+      if ((e.status === 409 || e.status === 422) && tries < 3) return attempt();
+      throw e;
+    });
+  }
+  syncing = attempt().then(function (res) {
+    syncCfg.last = Date.now(); syncCfg.err = ''; lsSet(SYNC_KEY, syncCfg);
+    if (res.changed) render();
+    return res;
+  }, function (e) {
+    syncCfg.err = errText(e); lsSet(SYNC_KEY, syncCfg);
+    return { err: syncCfg.err };
+  }).then(function (r) { syncing = null; if (syncPaint) syncPaint(); return r; });
+  if (syncPaint) syncPaint();
+  return syncing;
+}
+function syncSoon(ms) {
+  if (!syncOn()) return;
+  clearTimeout(syncT);
+  syncT = setTimeout(function () { runSync(); }, ms == null ? 2500 : ms);
+}
+function syncLabel() {
+  if (!syncOn()) return 'No conectado';
+  if (syncing) return 'Sincronizando…';
+  if (syncCfg.err) return syncCfg.err;
+  return syncCfg.last ? 'Sincronizado ' + hm(syncCfg.last) : 'Conectado';
+}
+function githubSheet() {
+  var on = syncOn();
+  var sh = openSheet(
+    '<div class="p-head"><div><h2>GitHub</h2></div><button class="p-done" type="button" data-close>Listo</button></div>' +
+    '<ul class="list"><li class="kv"><span>Repositorio</span><input class="txt" id="gh-repo" type="text" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="usuario/repositorio" aria-label="Repositorio"></li>' +
+    '<li class="kv"><span>Token</span><input class="txt" id="gh-token" type="password" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="' + (on ? '••••••••' : 'github_pat_…') + '" aria-label="Token"></li></ul>' +
+    '<p class="note" id="gh-msg" hidden></p>' +
+    '<button class="btn primary block" type="button" id="gh-save">Guardar y sincronizar</button>' +
+    (on ? '<button class="btn danger block" type="button" id="gh-off" style="margin-top:12px">Desconectar</button>' : '')
+  );
+  var repo = $('#gh-repo', sh.panel), tok = $('#gh-token', sh.panel), msg = $('#gh-msg', sh.panel);
+  repo.value = syncCfg.repo || '';
+  function say(t, bad) { msg.hidden = !t; msg.textContent = t || ''; msg.className = 'note ' + (bad ? 'warn' : 'pos'); }
+  $('#gh-save', sh.panel).addEventListener('click', function () {
+    var r = repo.value.trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/\/+$/, ''), t = tok.value.trim() || syncCfg.token || '';
+    if (!/^[\w.-]+\/[\w.-]+$/.test(r)) { say('Repositorio no válido.', true); return; }
+    if (!t) { say('Falta el token.', true); return; }
+    if (r !== syncCfg.repo || t !== syncCfg.token) syncCfg = { repo: r, token: t, shas: {}, pushed: {}, last: 0, err: '' };
+    lsSet(SYNC_KEY, syncCfg);
+    say('Sincronizando…');
+    runSync().then(function (res) {
+      if (res.err) say(res.err, true);
+      else { say('Sincronizado.'); tok.value = ''; if (syncPaint) syncPaint(); }
+    });
+  });
+  var off = $('#gh-off', sh.panel);
+  if (off) off.addEventListener('click', function () { syncCfg = {}; lsSet(SYNC_KEY, syncCfg); sh.close(); if (syncPaint) syncPaint(); toast('GitHub desconectado.'); });
+}
+document.addEventListener('visibilitychange', function () { if (!document.hidden && !Run) syncSoon(1500); });
+window.addEventListener('online', function () { syncSoon(1500); });
+setInterval(function () { if (!Run) runSync(); }, 10 * 60 * 1000);
 
 // ── Acciones ────────────────────────────────────────────────────────────────────
 document.addEventListener('click', function (e) {
@@ -3159,7 +3487,7 @@ document.addEventListener('click', function (e) {
 });
 
 // ── Inicio ──────────────────────────────────────────────────────────────────────
-recover().then(prune).catch(function () {}).then(render);
+recover().then(prune).catch(function () {}).then(render).then(function () { syncSoon(800); });
 // ── Convivencia con el reloj despertador ────────────────────────────────────────
 // Las hojas y la pantalla de la noche bloquean el desplazamiento de la pantalla de ajustes del reloj
 function lockPage(on) { var s = document.getElementById('settings'); if (s) s.style.overflowY = on ? 'hidden' : ''; }
@@ -3216,7 +3544,7 @@ function showPane() {
 }
 window.RQ = { alarmStart: alarmStart, alarmEnd: alarmEnd, show: showPane, running: function () { return !!Run; },
   // Para pruebas en el navegador de escritorio
-  DB: DB, render: render, Detector: Detector };
+  DB: DB, render: render, Detector: Detector, sync: runSync, mergeIn: mergeIn, buildPayload: buildPayload, deleteNight: deleteNight, saveCfg: saveCfg, cfg: cfg };
 
 })();
 </script>

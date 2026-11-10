@@ -27,7 +27,14 @@ En vertical, la pestaña **Ronquidos** (arriba de los ajustes) tiene todo lo de 
 - **Detener** guarda y termina la noche (se puede desactivar en Ajustes de Ronquidos › «Terminar al detener la alarma»; en ese caso la escucha sigue).
 - «Probar el despertador» (suena en 10 s) nunca termina la noche.
 
-Los datos de Ronquidos quedan solo en el iPhone: noches y audios en IndexedDB `ronquidos`, ajustes en `localStorage` (`ronquidos-ajustes`); los del reloj en `reposo.v1`.
+### Datos y sincronización entre dispositivos
+
+Los datos de Ronquidos quedan en el dispositivo: noches y audios en IndexedDB `ronquidos`, ajustes en `localStorage` (`ronquidos-ajustes`); los del reloj en `reposo.v1`. Para verlos en varios dispositivos, en **Ronquidos › Ajustes › Sincronización** hay dos vías. Se sincronizan las noches (cifras, gráfico por hora, huecos) y los ajustes de Ronquidos; **los audios no**, quedan en el dispositivo donde se grabaron.
+
+- **GitHub (automática).** Un repositorio **privado** propio guarda un archivo por noche (`noches/<id>.json`) y `meta.json` (ajustes y noches borradas). Cada dispositivo necesita el mismo repositorio y un token fine-grained con acceso solo a ese repositorio y permiso *Contents: Read and write*. Se sincroniza al abrir la app, al terminar una noche, al volver a primer plano y cada 10 minutos (no durante la escucha). Gana la versión más reciente de cada noche (`upd`); borrar una noche o «Borrar todo» se propaga a los demás dispositivos mediante marcas de borrado. El token se guarda solo en el `localStorage` del dispositivo.
+- **Archivo (manual).** «Exportar datos» genera `ronquidos-AAAA-MM-DD.json` (menú Compartir de iOS o descarga) e «Importar datos» lo combina con lo que ya hay, sin duplicar. Todo lo importado o descargado se valida y se sanea antes de guardarlo.
+
+Los pasos para crear el repositorio y el token están en la hoja de **Ayuda** de la app.
 
 ## Instalación en el iPhone
 
