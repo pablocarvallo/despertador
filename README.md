@@ -6,7 +6,7 @@ Reloj despertador de cabecera para iPhone al estilo del modo **En reposo**, con 
 
 - En horizontal muestra la hora en cifras grandes, el día, la temperatura y la próxima alarma.
 - En vertical muestra los ajustes: alarmas con días de repetición, tono, posponer, estilo del reloj y modo de luz.
-- **Interruptor general de la alarma** (arriba de la lista, en la pestaña Despertador): apagado, no suena ninguna alarma ni posposición (la prueba sí). En horizontal, la alarma que se ve a la derecha del reloj es también el interruptor: tocarla la enciende; para apagarla hay que tocarla dos veces. Apagada se ve atenuada con la palabra «Apagada» y, en la pantalla de la noche de Ronquidos, aparece «Alarma apagada». Agregar, editar o activar una alarma vuelve a encender el interruptor general.
+- **Interruptor general de la alarma** (arriba de la lista, en la pestaña Despertador): apagado, no suena ninguna alarma ni posposición (la prueba sí). En horizontal, la alarma que se ve a la derecha del reloj es también el interruptor: tocarla la enciende; para apagarla hay que tocarla dos veces (el primer toque muestra «¿Apagar?»). Apagada se ve atenuada con la palabra «Apagada» y, en la pantalla de la noche de Ronquidos, aparece «Alarma apagada». Agregar, editar o activar una alarma vuelve a encender el interruptor general.
 - En horizontal, deslizar el dedo hacia arriba aclara el reloj y hacia abajo lo oscurece (un nivel para el modo celeste y otro para el rojo). Deslizar hacia los lados cambia el estilo.
 - Protección de pantalla: el reloj se mueve de a poco (Deriva, Latido o Paseo) para que la imagen no quede fija toda la noche.
 - Celeste con luz y rojo en oscuridad. La luz se mide con la cámara frontal (o por horario, o fija).
@@ -25,7 +25,7 @@ En vertical, la pestaña **Ronquidos** (arriba de los ajustes) tiene todo lo de 
 - Cuando suena una alarma, el micrófono se pone en pausa (para que el tono salga por el parlante) y esa pausa queda anotada en la noche.
 - **Posponer** vuelve a abrir el micrófono y la escucha sigue.
 - **Detener** guarda y termina la noche (se puede desactivar en Ajustes de Ronquidos › «Terminar al detener la alarma»; en ese caso la escucha sigue).
-- «Sonar en 10 s» (prueba) nunca termina la noche.
+- «Probar el despertador» (suena en 10 s) nunca termina la noche.
 
 Los datos de Ronquidos quedan solo en el iPhone: noches y audios en IndexedDB `ronquidos`, ajustes en `localStorage` (`ronquidos-ajustes`); los del reloj en `reposo.v1`.
 
@@ -35,18 +35,23 @@ Los datos de Ronquidos quedan solo en el iPhone: noches y audios en IndexedDB `r
 2. En el iPhone abre la dirección en **Safari**, toca **Compartir › Agregar a pantalla de inicio**.
 3. Abre la app desde el icono **Reposo**, toca la pantalla una vez y ponla en horizontal. Para Ronquidos, la primera vez pide permiso para el micrófono: elige **Permitir**.
 
-## Para que suene toda la noche
+## Para que funcione toda la noche
 
-- iPhone conectado al cargador y con el volumen multimedia alto (la alarma no usa el volumen del timbre).
-- Abre la app desde el icono, toca la pantalla una vez (activa el sonido) y **no la cierres deslizándola**.
-- **Pantalla bloqueada:** mientras haya una alarma pendiente la app reproduce en bucle un audio silencioso (`keepAudio`) y se muestra en la pantalla de bloqueo como «Despertador activo»; así iOS no suspende la página y la alarma puede sonar. No es una garantía de iOS: compruébalo con **Sonar en 30 s** (Probar con la pantalla bloqueada) y bloqueando el iPhone. Si la app se cierra, el iPhone se reinicia o se queda sin batería, no suena.
-- **Ronquidos** necesita la pantalla encendida: iOS corta el micrófono de una app web al bloquear la pantalla. Para escuchar la noche deja la pantalla encendida (Ajustes › Pantalla y brillo › Bloqueo automático › Nunca); si la bloqueas, la alarma puede sonar pero la escucha se detiene.
+La app debe estar **siempre abierta, al frente y con la pantalla encendida**. No usa audio de respaldo ni funciona con la pantalla bloqueada: si se cierra o se bloquea, no suena la alarma ni se registran ronquidos.
+
+- iPhone conectado al cargador y con el volumen multimedia alto.
+- Ajustes › Pantalla y brillo › Bloqueo automático › Nunca.
+- Abre la app desde el icono, toca la pantalla una vez (activa el sonido) y ponla en horizontal.
+
+## Ayuda dentro de la app
+
+La app no muestra explicaciones ni instrucciones en sus pantallas. Todas están en la hoja de **Ayuda**, con el icono **?** arriba a la derecha de la pantalla de ajustes (vertical).
 
 ## Detalles técnicos
 
 - Un solo `index.html`. El código de Ronquidos va en su propio bloque `<script>` (motor de detección entre `/*MOTOR:START*/ … /*MOTOR:END*/`) y sus estilos en un bloque `<style>` con todo bajo `.rq`, con las variables `--ds-*` conectadas a la paleta del reloj (celeste con luz, rojo en oscuridad).
 - Los dos módulos se hablan por `window.Reposo` (próxima alarma, espera de la cámara) y `window.RQ` (pausar y reanudar con la alarma, terminar la noche, redibujar gráficos).
 - `silencio.mp4` mantiene encendida la pantalla durante la escucha en iPhones sin Wake Lock; `keepawake.mp4` hace lo mismo para el reloj.
-- Audio de respaldo: `#keepAudio` (WAV silencioso generado en el código) más Media Session; se activa con alarma pendiente, interruptor encendido y la app activada con un toque.
+- La pantalla se mantiene encendida con Wake Lock y los videos mudos anteriores; no hay audio de respaldo para pantalla bloqueada.
 
 Fuente Antonio (SIL Open Font License, ver `fonts/OFL-Antonio.txt`). Tonos de alarma originales generados para esta app.

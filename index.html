@@ -108,17 +108,16 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 body.flipped #arm{left:21%;right:2.5%}
 .sb-clock.beat{animation:beat 1.2s ease-out}
 @keyframes beat{0%{transform:scale(1)}14%{transform:scale(1.035)}28%{transform:scale(1)}42%{transform:scale(1.022)}62%,100%{transform:scale(1)}}
-.row-note{margin:8px 0 0;font-size:13px;line-height:1.45;color:var(--ui-fg2)}
 
 #arm{
   position:fixed;left:2.5%;right:21%;bottom:calc(var(--h)*.05);z-index:20;display:none;
   justify-content:center;pointer-events:none;
 }
 #arm span{
-  pointer-events:auto;cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;
-  padding:.55em 1.2em;border-radius:999px;background:var(--card2);color:var(--fg);
-  font-size:calc(var(--h)*.046);font-weight:600;
+  pointer-events:auto;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  width:calc(var(--h)*.13);height:calc(var(--h)*.13);border-radius:50%;background:var(--card2);color:var(--fg);
 }
+#arm svg{display:block;width:56%;height:56%}
 body.unarmed .sb-inner{opacity:.42}
 .sb-inner{transition:transform 3s ease,opacity .6s ease}
 
@@ -133,13 +132,14 @@ body.unarmed .sb-inner{opacity:.42}
 .st-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 #stTime{font-family:var(--font-clock);font-weight:600;font-size:84px;line-height:.95;color:var(--digit);letter-spacing:.005em}
 #stDate{font-size:16px;color:var(--ui-fg2)}
-#stDone{display:none;border:0;border-radius:999px;background:var(--card2);color:var(--acc);font-weight:600;font-size:16px;padding:9px 18px;margin-top:6px}
+.st-btns{display:flex;align-items:center;gap:10px;margin-top:6px}
+#stDone{display:none;border:0;border-radius:999px;background:var(--card2);color:var(--acc);font-weight:600;font-size:16px;padding:9px 18px}
+#stHelp{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-radius:50%;background:var(--card2);color:var(--acc);padding:0}
+#stHelp svg{display:block;width:24px;height:24px}
 .st-status{display:flex;align-items:flex-start;gap:9px;margin-top:10px;font-size:15px;line-height:1.35;color:var(--ui-fg)}
 .dot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-top:5px;background:var(--acc)}
 .dot.warn{background:#F2A33A}
 .dot.off{background:var(--ui-fg2)}
-.st-tip{margin:2px 0 0;font-size:14px;line-height:1.4;color:var(--ui-fg2)}
-.st-install{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--card);font-size:14px;line-height:1.4;color:var(--ui-fg2)}
 
 h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ui-fg2);margin:30px 16px 8px}
 .group{background:var(--card);border-radius:12px;overflow:hidden}
@@ -195,12 +195,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--card2)}
 input[type=range]::-moz-range-thumb{width:26px;height:26px;border:0;border-radius:50%;background:var(--ui-fg)}
 
-.steps{margin:0;padding:6px 16px 10px 36px;font-size:15px;line-height:1.45;color:var(--ui-fg)}
-.steps li{padding:6px 0}
-.steps em{font-style:normal;color:var(--acc)}
 
 /* ---------- Hoja de edición ---------- */
-#sheet{position:fixed;top:0;right:0;bottom:0;left:0;z-index:40;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.62)}
+#sheet,#help{position:fixed;top:0;right:0;bottom:0;left:0;z-index:40;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.62)}
+.help-body{padding-bottom:6px}
+.help-body h3{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ui-fg2);margin:20px 0 6px}
+.help-body h3:first-child{margin-top:4px}
+.help-body ul{margin:0;padding:0 0 0 20px;font-size:15px;line-height:1.45;color:var(--ui-fg)}
+.help-body li{padding:4px 0}
 .sheet-card{width:100%;max-width:560px;max-height:100%;overflow-y:auto;background:var(--card);border-radius:14px 14px 0 0;padding:0 16px calc(env(safe-area-inset-bottom,0px) + 22px)}
 .sheet-bar{display:flex;align-items:center;justify-content:space-between;height:54px}
 .sheet-bar b{font-size:17px;font-weight:600}
@@ -590,7 +592,6 @@ body.listening #sbEnd{ display: block; }
 <style>
 .master .row{padding-top:12px;padding-bottom:12px}
 .master .lbl b{display:block;font-size:19px;font-weight:600}
-.master .lbl small{display:block;margin-top:2px;font-size:14px;line-height:1.35;color:var(--ui-fg2)}
 .sb-alarm{cursor:pointer}
 .sb-alarm.off{opacity:.5}
 .sb-alarm.off svg{color:var(--fg2)}
@@ -629,19 +630,20 @@ body.listening #sbEnd{ display: block; }
   <button id="sbGear" type="button">Ajustes</button>
 </main>
 
-<div id="arm"><span role="button" tabindex="0">Toca la pantalla para activar el despertador</span></div>
+<div id="arm"><span role="button" tabindex="0" aria-label="Activar sonido"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9.5h3.6L12 5.2v13.6l-4.9-4.3H3.5z" fill="currentColor"/><path d="M15.4 8.6a5 5 0 0 1 0 6.8M18 6a8.6 8.6 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></div>
 
 <section id="settings" aria-label="Ajustes">
   <div class="st-wrap">
     <div class="st-head">
       <div class="st-top">
         <div id="stTime" class="tr">06:30</div>
-        <button id="stDone" type="button">Listo</button>
+        <div class="st-btns">
+          <button id="stHelp" type="button" aria-label="Ayuda"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.3 9.4a2.8 2.8 0 1 1 4.2 2.4c-.9.6-1.5 1.1-1.5 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.25" fill="currentColor"/></svg></button>
+          <button id="stDone" type="button">Listo</button>
+        </div>
       </div>
       <div id="stDate">lunes 12 de octubre</div>
-      <div class="st-status"><span class="dot" id="stDot"></span><span id="stStatus">Toca cualquier parte para activar el sonido de la alarma.</span></div>
-      <p class="st-tip">Gira el iPhone en horizontal para ver el reloj en reposo.</p>
-      <div class="st-install" id="stInstall" hidden>Para abrirla como app independiente: en Safari toca <strong>Compartir</strong> y luego <strong>Agregar a pantalla de inicio</strong>.</div>
+      <div class="st-status"><span class="dot" id="stDot"></span><span id="stStatus"></span></div>
       <div class="seg" id="segTab" role="group" aria-label="Sección">
         <button type="button" data-v="alarma">Despertador</button>
         <button type="button" data-v="rq">Ronquidos</button>
@@ -650,7 +652,7 @@ body.listening #sbEnd{ display: block; }
 
     <div id="paneAlarm">
     <div class="group master">
-      <label class="row" for="alarmMaster"><span class="lbl"><b>Alarma</b><small id="masterNote"></small></span><span class="switch"><input type="checkbox" id="alarmMaster"><span></span></span></label>
+      <label class="row" for="alarmMaster"><span class="lbl"><b>Alarma</b></span><span class="switch"><input type="checkbox" id="alarmMaster"><span></span></span></label>
     </div>
     <h2>Alarmas</h2>
     <div class="group" id="alarmList"></div>
@@ -672,9 +674,7 @@ body.listening #sbEnd{ display: block; }
         </select>
       </label>
       <div class="row"><span class="lbl">Probar el despertador</span><button class="btn-pill" type="button" id="testBtn">Sonar en 10 s</button></div>
-      <div class="row"><span class="lbl">Probar con la pantalla bloqueada</span><button class="btn-pill" type="button" id="testLockBtn">Sonar en 30 s</button></div>
     </div>
-    <p class="foot">La alarma empieza suave y sube en 15 segundos. Usa el volumen multimedia: mientras suena el tono, ajusta el volumen con los botones laterales. Pruébala también con el interruptor de silencio activado. Con alarmas activas la app mantiene un audio silencioso en marcha para poder sonar con la pantalla bloqueada: toca la pantalla una vez al abrir la app, no la cierres deslizándola, y comprueba con «Sonar en 30 s» bloqueando el iPhone.</p>
 
     <h2>Luz ambiente</h2>
     <div class="group">
@@ -696,7 +696,7 @@ body.listening #sbEnd{ display: block; }
       <div class="row" id="lightFrom"><span class="lbl">Rojo desde</span><input class="inline" type="time" id="nightFrom" value="22:00"></div>
       <div class="row" id="lightTo"><span class="lbl">Celeste desde</span><input class="inline" type="time" id="nightTo" value="07:00"></div>
     </div>
-    <p class="foot" id="lightFoot">El sensor usa la cámara frontal solo para medir cuánta luz hay; no guarda ni envía imágenes. Si la cámara no está disponible, se usa el horario.</p>
+    <p class="foot" id="lightFoot" hidden></p>
 
     <h2>Pantalla</h2>
     <div class="group">
@@ -716,24 +716,12 @@ body.listening #sbEnd{ display: block; }
           <button type="button" data-v="paseo">Paseo</button>
           <button type="button" data-v="no">Fijo</button>
         </div>
-        <p class="row-note" id="guardNote"></p>
       </div>
       <label class="row" for="h24"><span class="lbl">Formato de 24 horas</span><span class="switch"><input type="checkbox" id="h24"><span></span></span></label>
       <label class="row" for="showTemp"><span class="lbl">Mostrar temperatura</span><span class="switch"><input type="checkbox" id="showTemp"><span></span></span></label>
       <div class="row"><span class="lbl">Ubicación <span class="val" id="locName">Santiago</span></span><button class="btn-pill" type="button" id="locBtn">Usar mi ubicación</button></div>
     </div>
-    <p class="foot">En horizontal, desliza el dedo hacia arriba para aclarar el reloj y hacia abajo para oscurecerlo; el brillo se recuerda por separado para el modo celeste y el rojo. Desliza hacia los lados para cambiar el estilo y toca la pantalla para ver el botón de ajustes.</p>
 
-    <h2>Para que suene toda la noche</h2>
-    <div class="group">
-      <ol class="steps">
-        <li>Deja el iPhone conectado al cargador.</li>
-        <li>Ve a <em>Ajustes › Pantalla y brillo › Bloqueo automático</em> y elige <em>Nunca</em>.</li>
-        <li>Desactiva el bloqueo de orientación vertical en el Centro de control.</li>
-        <li>Deja esta app abierta y al frente. Si la cierras o se bloquea la pantalla, la alarma no sonará.</li>
-        <li>Abre la app, toca la pantalla una vez y ponla en horizontal.</li>
-      </ol>
-    </div>
     </div>
 
     <div id="paneRq" class="rq" hidden>
@@ -755,7 +743,6 @@ body.listening #sbEnd{ display: block; }
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.6A8.2 8.2 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6Z"/></svg>
       Empezar la noche
     </button>
-    <p class="hint">Deja el iPhone enchufado, cerca de la cama y con la app abierta.</p>
   </div>
 
   <section class="sec" id="sec-hours" hidden>
@@ -830,6 +817,49 @@ body.listening #sbEnd{ display: block; }
   </div>
 </div>
 
+<div id="help" hidden>
+  <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="hpTitle">
+    <div class="sheet-bar"><b id="hpTitle">Ayuda</b><button type="button" id="hpClose">Listo</button></div>
+    <div class="help-body">
+      <h3>Para que funcione toda la noche</h3>
+      <ul>
+        <li>Deja el iPhone conectado al cargador.</li>
+        <li>En Ajustes › Pantalla y brillo › Bloqueo automático, elige Nunca.</li>
+        <li>Desactiva el bloqueo de orientación vertical en el Centro de control.</li>
+        <li>Deja la app abierta y al frente, con la pantalla encendida. Si la cierras o se bloquea la pantalla, la alarma no sonará y los ronquidos no se registrarán.</li>
+        <li>Al abrir la app, toca la pantalla una vez para activar el sonido y gira el iPhone a horizontal.</li>
+        <li>Para abrirla como app independiente: en Safari toca Compartir y luego Agregar a pantalla de inicio.</li>
+      </ul>
+      <h3>Alarma</h3>
+      <ul>
+        <li>El interruptor «Alarma» enciende o apaga todas las alarmas. Agregar, editar o activar una alarma lo vuelve a encender.</li>
+        <li>En el reloj horizontal, toca la alarma que aparece a la derecha: si está apagada se enciende con un toque; si está encendida, se apaga tocándola dos veces.</li>
+        <li>El tono empieza suave y sube en 15 segundos. Usa el volumen multimedia: mientras suena, ajústalo con los botones laterales. Pruébalo también con el interruptor de silencio activado.</li>
+        <li>«Probar el despertador» hace sonar la alarma en 10 segundos.</li>
+      </ul>
+      <h3>Reloj</h3>
+      <ul>
+        <li>Brillo: en horizontal, desliza hacia arriba para aclarar y hacia abajo para oscurecer. Se recuerda por separado para el modo celeste y el rojo.</li>
+        <li>Estilo: desliza hacia los lados para cambiarlo.</li>
+        <li>Toca la pantalla para ver el botón Ajustes.</li>
+        <li>Luz ambiente: el sensor usa la cámara frontal solo para medir cuánta luz hay; no guarda ni envía imágenes. Si la cámara no está disponible, se usa el horario.</li>
+        <li>Protección de pantalla — Deriva: cada 3 minutos el reloj se corre unos milímetros, tan despacio que no se nota. Latido: además late suavemente cada vez que cambia el minuto. Paseo: cada 10 minutos el reloj sale por un lado y vuelve por el otro, con la hora y los datos cambiados de lado. Fijo: el reloj queda quieto.</li>
+      </ul>
+      <h3>Ronquidos</h3>
+      <ul>
+        <li>Al acostarte toca «Empezar la noche». La app escucha mientras duermes, cuenta los ronquidos y graba algunos trozos. En la mañana se ve cuánto roncaste, hora por hora.</li>
+        <li>Para terminar la noche, mantén presionado el botón.</li>
+        <li>Mientras suena la alarma el micrófono queda en pausa. Con «Terminar al detener la alarma» activado, al detenerla la noche se guarda y termina; al posponerla, la escucha sigue.</li>
+        <li>«Probar la detección»: ronca o imita un ronquido, a un metro del iPhone, unas cuantas veces seguidas. Cuando reconozca tres ronquidos con ritmo de respiración, lo indicará.</li>
+        <li>Sensibilidad: Alta reconoce ronquidos más suaves, pero puede confundir otros sonidos graves. Baja cuenta solo los más claros.</li>
+        <li>Grabaciones: se guarda un trozo de hasta 30 s de cada episodio (máximo 20 por noche). Las cifras y el gráfico de cada noche se guardan siempre.</li>
+        <li>Micrófono: si no aparece la pregunta de permiso, revisa en Ajustes del iPhone › Apps › Safari › Micrófono que esté en «Preguntar» o «Permitir».</li>
+        <li>Todo queda guardado solo en este iPhone.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <div id="ringing" hidden>
   <div id="rgTime">06:30</div>
   <div id="rgLabel">Alarma</div>
@@ -837,7 +867,7 @@ body.listening #sbEnd{ display: block; }
     <button type="button" id="rgSnooze">Posponer</button>
     <button type="button" id="rgStop">Detener</button>
   </div>
-  <div id="rgWarn" hidden>No se pudo reproducir el sonido. Al abrir la app, toca la pantalla una vez para activarlo.</div>
+  <div id="rgWarn" hidden>No se pudo reproducir el sonido.</div>
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>
@@ -868,7 +898,6 @@ body.listening #sbEnd{ display: block; }
 <video id="keepAwake" class="hidden-media" src="keepawake.mp4" muted loop playsinline webkit-playsinline preload="auto"></video>
 <video id="camVideo" class="hidden-media" muted playsinline webkit-playsinline></video>
 <audio id="alarmAudio" preload="auto"></audio>
-<audio id="keepAudio" loop playsinline webkit-playsinline preload="auto"></audio>
 
 <script>
 (function () {
@@ -912,12 +941,7 @@ body.listening #sbEnd{ display: block; }
     tab: 'alarma',
     alarmOn: true
   };
-  var GUARD_NOTES = {
-    deriva: 'Cada 3 minutos el reloj se corre unos milímetros, tan despacio que no se nota.',
-    latido: 'El reloj late suavemente cada vez que cambia el minuto y, además, se corre unos milímetros cada 3 minutos.',
-    paseo: 'Cada 10 minutos el reloj sale por un lado y vuelve por el otro, con la hora y los datos cambiados de lado. Entre medio se corre como en Deriva.',
-    no: 'El reloj queda quieto.'
-  };
+  var GUARDS = { deriva: 1, latido: 1, paseo: 1, no: 1 };
   var S = load();
 
   function load() {
@@ -931,7 +955,7 @@ body.listening #sbEnd{ display: block; }
     } catch (e) { /* sin almacenamiento: se usan valores por defecto */ }
     if (!SOUNDS[out.sound]) out.sound = 'amanecer';
     if (!STYLES[out.style]) out.style = 'clasico';
-    if (!GUARD_NOTES[out.guard]) out.guard = 'deriva';
+    if (!GUARDS[out.guard]) out.guard = 'deriva';
     if (out.tab !== 'rq') out.tab = 'alarma';
     out.alarmOn = out.alarmOn !== false;
     if (!out.dim || typeof out.dim !== 'object') out.dim = { day: 1, night: 1 };
@@ -948,6 +972,7 @@ body.listening #sbEnd{ display: block; }
 
   /* ---------- Estado ---------- */
   var armed = false;
+  var offArm = 0;            // hasta cuándo vale el primer toque para apagar la alarma
   var ringing = null;        // { label, start }
   var previewing = false, previewTimer = null;
   var testAt = null;
@@ -1098,7 +1123,7 @@ body.listening #sbEnd{ display: block; }
   function camStart() {
     if (S.light !== 'auto' || cam.stream || cam.starting) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      cam.error = 'Este navegador no permite usar la cámara: se usa el horario.';
+      cam.error = 'Cámara no disponible: se usa el horario.';
       renderLight(); return;
     }
     cam.starting = true;
@@ -1243,7 +1268,6 @@ body.listening #sbEnd{ display: block; }
     else ok();
     startKeepAwake();
     camStart();
-    syncKeepAudio(true);
   }
   function startKeepAwake() {
     var v = $('keepAwake');
@@ -1395,8 +1419,9 @@ body.listening #sbEnd{ display: block; }
     if (!target && !off) { el.hidden = true; return; }
     el.hidden = false;
     el.className = 'sb-alarm tr' + (off ? ' off' : '');
-    note.hidden = !(snoozed || off);
-    note.textContent = off ? 'Apagada' : 'Pospuesta';
+    var ask = !off && Date.now() < offArm;
+    note.hidden = !(snoozed || off || ask);
+    note.textContent = ask ? '¿Apagar?' : off ? 'Apagada' : 'Pospuesta';
     if (!target) { tEl.textContent = '--:--'; return; }
     var h = target.getHours(), m = target.getMinutes();
     if (S.h24) tEl.textContent = pad(h) + ':' + pad(m);
@@ -1410,23 +1435,19 @@ body.listening #sbEnd{ display: block; }
   function renderStatus() {
     var now = new Date(), dot = $('stDot'), txt;
     var nx = nextAlarm(now);
-    if (!armed) { dot.className = 'dot warn'; txt = 'Toca cualquier parte de la pantalla para activar el sonido de la alarma.'; }
-    else if (!alarmsOn()) { dot.className = 'dot off'; txt = 'Alarma apagada: no sonará ninguna alarma.'; }
-    else if (S.snoozeUntil && S.snoozeUntil > now.getTime()) { dot.className = 'dot'; txt = 'Alarma pospuesta hasta las ' + fmtTime(new Date(S.snoozeUntil).getHours(), new Date(S.snoozeUntil).getMinutes(), true) + '.'; }
-    else if (nx) { dot.className = 'dot'; txt = 'Despertador listo. Próxima alarma ' + whenText(nx.date, now) + '.'; }
-    else { dot.className = 'dot off'; txt = 'Despertador listo, pero no hay alarmas activas.'; }
+    if (!armed) { dot.className = 'dot warn'; txt = 'Sonido sin activar'; }
+    else if (!alarmsOn()) { dot.className = 'dot off'; txt = 'Alarma apagada'; }
+    else if (S.snoozeUntil && S.snoozeUntil > now.getTime()) { dot.className = 'dot'; txt = 'Pospuesta hasta las ' + fmtTime(new Date(S.snoozeUntil).getHours(), new Date(S.snoozeUntil).getMinutes(), true); }
+    else if (nx) { dot.className = 'dot'; txt = 'Próxima alarma ' + whenText(nx.date, now); }
+    else { dot.className = 'dot off'; txt = 'Sin alarmas activas'; }
     $('stStatus').textContent = txt;
     renderMaster();
   }
-  function renderMaster() {
-    var on = alarmsOn(), note = $('masterNote'), nx = nextAlarm(new Date());
-    $('alarmMaster').checked = on;
-    note.textContent = !on ? 'Apagada: no sonará ninguna alarma.' : nx ? 'Activada. Próxima ' + whenText(nx.date, new Date()) + '.' : 'Activada. No hay alarmas programadas.';
-  }
+  function renderMaster() { $('alarmMaster').checked = alarmsOn(); }
   function renderAlarms() {
     var list = $('alarmList');
     var items = S.alarms.slice().sort(function (a, b) { return (a.h * 60 + a.m) - (b.h * 60 + b.m); });
-    if (!items.length) { list.innerHTML = '<div class="empty">No hay alarmas. Agrega una para empezar.</div>'; return; }
+    if (!items.length) { list.innerHTML = '<div class="empty">Sin alarmas</div>'; return; }
     list.innerHTML = '';
     items.forEach(function (a) {
       var row = document.createElement('div');
@@ -1441,7 +1462,6 @@ body.listening #sbEnd{ display: block; }
   }
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function renderSegs() {
-    $('guardNote').textContent = GUARD_NOTES[S.guard] + (guard && guard.demo ? ' Gira el iPhone para verlo una vez.' : '');
     $('paneAlarm').hidden = S.tab === 'rq';
     $('paneRq').hidden = S.tab !== 'rq';
     [['segTab', S.tab], ['segLight', S.light], ['segStyle', S.style], ['segGuard', S.guard]].forEach(function (p) {
@@ -1466,9 +1486,8 @@ body.listening #sbEnd{ display: block; }
     $('lightFrom').hidden = !showTimes;
     $('lightTo').hidden = !showTimes;
     var foot = $('lightFoot');
-    if (auto) foot.textContent = cam.error || 'El sensor usa la cámara frontal solo para medir cuánta luz hay; no guarda ni envía imágenes. Si la cámara no está disponible, se usa el horario.';
-    else if (sched) foot.textContent = 'Los colores cambian a rojo y vuelven a celeste a las horas indicadas.';
-    else foot.textContent = 'Los colores quedan fijos.';
+    foot.textContent = auto ? cam.error : '';
+    foot.hidden = !foot.textContent;
     renderLightLive();
   }
   function renderLightLive() {
@@ -1547,14 +1566,14 @@ body.listening #sbEnd{ display: block; }
       S.alarms.push({ id: 'a' + Date.now(), h: h, m: m, days: editDays.slice(), on: true, label: label });
     }
     S.alarmOn = true; // agregar o cambiar una alarma vuelve a activar el interruptor general
-    save(); closeSheet(); renderAlarms(); renderSide(); renderStatus(); syncKeepAudio();
+    save(); closeSheet(); renderAlarms(); renderSide(); renderStatus();
     var nx = nextAlarm(new Date());
     if (nx) toast('Sonará ' + whenText(nx.date, new Date()));
   }
   function deleteAlarm() {
     if (!editing) return;
     S.alarms = S.alarms.filter(function (a) { return a.id !== editing; });
-    save(); closeSheet(); renderAlarms(); renderSide(); renderStatus(); syncKeepAudio();
+    save(); closeSheet(); renderAlarms(); renderSide(); renderStatus();
   }
 
   /* ---------- Eventos ---------- */
@@ -1614,13 +1633,13 @@ body.listening #sbEnd{ display: block; }
     sbTap();
   });
   $('sbGear').addEventListener('click', function () { document.body.classList.add('show-settings'); });
-  // Interruptor de la alarma en el reloj: encender es directo; apagar pide tocar dos veces (para no apagarla sin querer de noche)
-  var offArm = 0;
+  // Interruptor de la alarma en el reloj: encender es directo; apagar pide tocar dos veces (muestra «¿Apagar?»)
   $('sbAlarm').addEventListener('click', function () {
     if (!alarmsOn()) { setAlarmOn(true); return; }
     if (Date.now() < offArm) { offArm = 0; setAlarmOn(false); return; }
     offArm = Date.now() + 3500;
-    toast('Toca otra vez para apagar la alarma');
+    renderSide();
+    setTimeout(renderSide, 3600);
   });
   $('stDone').addEventListener('click', function () {
     document.body.classList.remove('show-settings');
@@ -1646,7 +1665,7 @@ body.listening #sbEnd{ display: block; }
     if (!id) return;
     S.alarms.forEach(function (a) { if (a.id === id) a.on = e.target.checked; });
     if (e.target.checked) S.alarmOn = true;
-    save(); renderAlarms(); renderSide(); renderStatus(); syncKeepAudio();
+    save(); renderAlarms(); renderSide(); renderStatus();
     if (e.target.checked) { var nx = nextAlarm(new Date()); if (nx) toast('Sonará ' + whenText(nx.date, new Date())); }
   });
   $('addAlarm').addEventListener('click', function () { openSheet(null); });
@@ -1671,14 +1690,9 @@ body.listening #sbEnd{ display: block; }
   $('previewBtn').addEventListener('click', function () { if (previewing) stopPreview(); else startPreview(); });
   $('snoozeSel').addEventListener('change', function () { S.snooze = parseInt(this.value, 10) || 9; save(); });
   $('alarmMaster').addEventListener('change', function () { setAlarmOn(this.checked); });
-  $('testLockBtn').addEventListener('click', function () {
-    testAt = Date.now() + 30000;
-    syncKeepAudio(true);
-    toast('Sonará en 30 segundos. Bloquea el iPhone ahora con el botón lateral.');
-  });
   $('testBtn').addEventListener('click', function () {
     testAt = Date.now() + 10000;
-    toast('Sonará en 10 segundos. Gira el iPhone si quieres verlo en reposo.');
+    toast('Sonará en 10 segundos');
   });
 
   function segHandler(key) {
@@ -1730,6 +1744,9 @@ body.listening #sbEnd{ display: block; }
     }, function () { toast('No se pudo obtener la ubicación'); }, { timeout: 15000, maximumAge: 3600000 });
   });
 
+  $('stHelp').addEventListener('click', function () { $('help').hidden = false; $('help').querySelector('.sheet-card').scrollTop = 0; });
+  $('hpClose').addEventListener('click', function () { $('help').hidden = true; });
+  $('help').addEventListener('click', function (e) { if (e.target === $('help')) $('help').hidden = true; });
   $('rgSnooze').addEventListener('click', snooze);
   $('rgStop').addEventListener('click', stopAll);
 
@@ -1809,70 +1826,8 @@ body.listening #sbEnd{ display: block; }
     if (!on) { S.snoozeUntil = null; S.snoozeLabel = ''; }
     save();
     renderSide(); renderStatus(); renderAlarms();
-    syncKeepAudio();
     if (on) { var nx = nextAlarm(new Date()); toast(nx ? 'Alarma activada. Sonará ' + whenText(nx.date, new Date()) : 'Alarma activada. No hay alarmas programadas'); }
-    else toast('Alarma apagada. No sonará ninguna alarma');
-  }
-
-  /* ---------- Audio de respaldo para pantalla bloqueada ---------- */
-  // iOS suspende las páginas web al bloquear la pantalla, salvo las que están reproduciendo audio. Mientras haya una
-  // alarma pendiente se reproduce en bucle un audio silencioso para que la app siga viva y la alarma pueda sonar.
-  var keepAudio = $('keepAudio'), keepOn = false, keepUrl = null, keepText = '';
-  function silentWavUrl() {
-    if (keepUrl) return keepUrl;
-    var n = 8000, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
-    function s(o, t) { for (var i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }
-    s(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); s(8, 'WAVE'); s(12, 'fmt ');
-    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-    v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-    s(36, 'data'); v.setUint32(40, n * 2, true);
-    keepUrl = URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
-    return keepUrl;
-  }
-  function keepWanted(force) {
-    if (!(armed || force)) return false;
-    if (testAt) return true;
-    if (!alarmsOn()) return false;
-    if (S.snoozeUntil) return true;
-    for (var i = 0; i < S.alarms.length; i++) if (S.alarms[i].on) return true;
-    return false;
-  }
-  function mediaInfo(on) {
-    var ms = navigator.mediaSession;
-    if (!ms) return;
-    try {
-      if (on) {
-        var t = nextAlarmText() || 'Reposo';
-        if (t === keepText && ms.playbackState === 'playing') return;
-        keepText = t;
-        if (window.MediaMetadata) ms.metadata = new MediaMetadata({ title: 'Despertador activo', artist: t });
-        ms.playbackState = 'playing';
-        ['pause', 'stop'].forEach(function (a) {
-          try { ms.setActionHandler(a, function () { var p = keepAudio.play(); if (p && p.catch) p.catch(function () { }); }); } catch (e) { }
-        });
-      } else {
-        keepText = '';
-        ms.playbackState = 'none';
-        ms.metadata = null;
-      }
-    } catch (e) { }
-  }
-  function syncKeepAudio(force) {
-    var want = keepWanted(force);
-    if (want) {
-      if (!keepOn || keepAudio.paused) {
-        if (!keepAudio.src || keepAudio.src.indexOf('blob:') !== 0) keepAudio.src = silentWavUrl();
-        keepAudio.loop = true;
-        keepOn = true;
-        var p = keepAudio.play();
-        if (p && p.catch) p.catch(function () { keepOn = false; });
-      }
-      mediaInfo(true);
-    } else if (keepOn) {
-      keepOn = false;
-      try { keepAudio.pause(); } catch (e) { }
-      mediaInfo(false);
-    }
+    else toast('Alarma apagada');
   }
 
   /* ---------- Conexión con Ronquidos ---------- */
@@ -1900,7 +1855,6 @@ body.listening #sbEnd{ display: block; }
     var nowMs = Date.now();
     checkAlarms(nowMs);
     lastCheck = nowMs;
-    syncKeepAudio();
     var now = new Date(nowMs);
     if (ringing && nowMs - ringing.start > 15 * 60000) stopRing();
     if (now.getMinutes() !== lastMinute) {
@@ -1932,7 +1886,6 @@ body.listening #sbEnd{ display: block; }
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible') return;
     if (armed) startKeepAwake();
-    syncKeepAudio();
     if (S.light === 'auto' && armed && !cam.stream) camStart();
     lastText = ''; onResize();
     fetchWeather(false);
@@ -1940,10 +1893,6 @@ body.listening #sbEnd{ display: block; }
 
   // Estado inicial
   document.body.classList.add('unarmed');
-  if (!(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches))) {
-    var inFrame = false; try { inFrame = window.self !== window.top; } catch (e) { inFrame = true; }
-    if (!inFrame && /iPhone|iPad|iPod/.test(navigator.userAgent)) $('stInstall').hidden = false;
-  }
   applyTheme();
   renderSegs();
   renderAll();
@@ -2403,7 +2352,7 @@ function render() {
     $('#today').textContent = cap(dayLong(d));
     renderHero(); renderHours(); renderClips(); renderHist();
   }).catch(function () {
-    $('#hero').innerHTML = '<p class="eyebrow">Ronquidos</p><p class="hero-title">No se pudo abrir el registro</p><p class="hero-txt">El iPhone no dejó leer los datos guardados. Cierra la app y vuelve a abrirla.</p>';
+    $('#hero').innerHTML = '<p class="eyebrow">Ronquidos</p><p class="hero-title">No se pudo abrir el registro</p>';
   });
 }
 
@@ -2411,7 +2360,6 @@ function renderHero() {
   var h = $('#hero'), r = nights[0];
   if (!r) {
     h.innerHTML = '<span class="hero-art">' + ICON.moon + '</span><p class="eyebrow">Para empezar</p><p class="hero-title">Aún no hay noches</p>' +
-      '<p class="hero-txt">Al acostarte toca «Empezar la noche». La app escucha mientras duermes, cuenta los ronquidos y graba algunos trozos. En la mañana verás cuánto roncaste, hora por hora.</p>' +
       '<button class="hero-cta" type="button" data-act="test">Probar la detección' + ICON.chev.replace('r-chev', '') + '</button>';
     return;
   }
@@ -2559,9 +2507,9 @@ function nightSheet(id) {
   if (!r) return;
   var s = stats(r), d = nightDay(r), n = (r.clips || []).length, mode = cfg.hourMode;
   var notes = '';
-  if (r.cut) notes += '<p class="note warn">La app se cerró a las ' + hm(r.end) + '; la noche quedó guardada hasta esa hora.</p>';
+  if (r.cut) notes += '<p class="note warn">La app se cerró a las ' + hm(r.end) + '.</p>';
   (r.gaps || []).filter(function (g) { return g[1] - g[0] >= 2 * MIN; }).forEach(function (g) {
-    notes += '<p class="note warn">No se escuchó entre las ' + hm(g[0]) + ' y las ' + hm(g[1]) + ' (la app quedó en segundo plano, sonó la alarma o se cortó el micrófono).</p>';
+    notes += '<p class="note warn">No se escuchó entre las ' + hm(g[0]) + ' y las ' + hm(g[1]) + '.</p>';
   });
   var sh = openSheet(
     '<div class="p-head"><div><h2>Noche del ' + dayLong(d) + '</h2><p class="sub">' + hm(r.start) + ' a ' + hm(r.end) + ' · ' + fmtDur(s.listened) + ' escuchando</p></div>' +
@@ -2760,11 +2708,10 @@ function micClose(m) {
 }
 function micErrorSheet(err) {
   var name = err && err.name;
-  var msg = name === 'NotAllowedError' || name === 'SecurityError'
-    ? '<p class="hint">La app necesita el micrófono para escuchar los ronquidos. Vuelve a tocar «Empezar la noche» y elige «Permitir».</p><p class="hint">Si no aparece la pregunta, revisa en Ajustes del iPhone › Apps › Safari › Micrófono que esté en «Preguntar» o «Permitir».</p>'
-    : name === 'NotFoundError' ? '<p class="hint">No se encontró un micrófono en este equipo.</p>'
-    : '<p class="hint">No se pudo abrir el micrófono' + (name ? ' (' + name + ')' : '') + '. Cierra la app, ábrela de nuevo y vuelve a intentarlo.</p>';
-  infoSheet('Sin acceso al micrófono', msg);
+  var msg = name === 'NotAllowedError' || name === 'SecurityError' ? 'Sin permiso para usar el micrófono.'
+    : name === 'NotFoundError' ? 'No se encontró un micrófono.'
+    : 'No se pudo abrir el micrófono' + (name ? ' (' + name + ')' : '') + '.';
+  infoSheet('Sin acceso al micrófono', '<p class="hint">' + msg + '</p>');
 }
 
 // ── Pantalla encendida toda la noche ────────────────────────────────────────────
@@ -2816,7 +2763,7 @@ function nextAt(hhmm, from) {
 
 function startNight() {
   if (Run) return;
-  if (!micSupported()) { infoSheet('Sin micrófono', '<p class="hint">Este navegador no permite usar el micrófono. Abre la app en Safari en el iPhone.</p>'); return; }
+  if (!micSupported()) { infoSheet('Sin micrófono', '<p class="hint">Este navegador no permite usar el micrófono.</p>'); return; }
   Player.stop();
   closeAllSheets();
   var ctx;
@@ -2949,7 +2896,7 @@ function tick() {
   // estado y cifras
   if (now < R.listenFrom) {
     nightStatus('Empieza a escuchar a las ' + hm(R.listenFrom), 'wait');
-    $('#n-line').textContent = 'Puedes dejar el iPhone y dormir';
+    $('#n-line').innerHTML = '&nbsp;';
   } else {
     nightStatus(R.paused ? 'Micrófono en pausa · suena la alarma' : ((R.clip ? 'Grabando' : 'Escuchando') + ' · ' + fmtDur(now - R.listenFrom)), R.paused ? 'wait' : R.clip ? 'rec' : '');
     var mins = Object.keys(rec.min).length;
@@ -3039,7 +2986,7 @@ function recover() {
       else { r.cut = true; cut = r; jobs.push(DB.put('nights', r)); }
     });
     return Promise.all(jobs).then(function () {
-      if (cut) toast('La app se cerró durante la noche; quedó guardada hasta las ' + hm(cut.end) + '.', 5000);
+      if (cut) toast('La noche quedó guardada hasta las ' + hm(cut.end) + '.', 5000);
     });
   }).catch(function () {});
 }
@@ -3076,19 +3023,18 @@ window.addEventListener('pagehide', function () { if (Run) saveRun(); });
 // ── Probar la detección ─────────────────────────────────────────────────────────
 function testSheet() {
   if (Run) return;
-  if (!micSupported()) { infoSheet('Sin micrófono', '<p class="hint">Este navegador no permite usar el micrófono. Abre la app en Safari en el iPhone.</p>'); return; }
+  if (!micSupported()) { infoSheet('Sin micrófono', '<p class="hint">Este navegador no permite usar el micrófono.</p>'); return; }
   Player.stop();
   var ctx;
   try { ctx = micBegin(); } catch (e) { micErrorSheet(e); return; }
   var T = { ctx: ctx, mic: null, det: null, sounds: [], confirmed: 0, tick: 0 };
   var sh = openSheet(
-    '<div class="p-head"><div><h2>Probar la detección</h2><p class="sub">Ronca o imita un ronquido, a un metro del iPhone, unas cuantas veces seguidas.</p></div>' +
+    '<div class="p-head"><div><h2>Probar la detección</h2></div>' +
     '<button class="p-done" type="button" data-close>Listo</button></div>' +
     '<div class="card"><div class="rq-meter"><div class="m-track"><span class="m-fill" id="t-fill"></span><i class="m-thr" id="t-thr"></i></div>' +
     '<div class="m-lab"><span id="t-state">Abriendo el micrófono…</span><span>Tono grave <b id="t-ratio">—</b></span></div></div></div>' +
-    '<p class="note" id="t-conf">Cuando reconozca tres ronquidos con ritmo de respiración, aparecerá aquí.</p>' +
-    '<p class="grp">Últimos sonidos</p><ul class="list" id="t-list"><li class="empty-row">Todavía nada.</li></ul>' +
-    '<p class="hint">Sensibilidad: <b>' + cap(cfg.sens) + '</b>. La línea del medidor marca desde dónde un sonido cuenta. Si tus ronquidos no aparecen, sube la sensibilidad en Ajustes.</p>',
+    '<p class="note" id="t-conf" hidden></p>' +
+    '<p class="grp">Últimos sonidos</p><ul class="list" id="t-list"><li class="empty-row">Todavía nada.</li></ul>',
     function () { micClose(T.mic || { ctx: ctx }); T.closed = true; }
   );
   function onT(type, d) {
@@ -3114,8 +3060,8 @@ function testSheet() {
     } else if (type === 'episode') {
       T.confirmed++;
       var c = $('#t-conf', sh.panel);
-      c.className = 'note pos';
-      c.textContent = 'Ronquido reconocido' + (T.confirmed > 1 ? ' (' + T.confirmed + ' veces)' : '') + '. Así se contará durante la noche.';
+      c.hidden = false; c.className = 'note pos';
+      c.textContent = 'Ronquido reconocido' + (T.confirmed > 1 ? ' (' + T.confirmed + ' veces)' : '');
     }
   }
   micOpen(ctx, function (x) { if (T.det && !T.closed) T.det.push(x, Date.now()); }).then(function (mic) {
@@ -3136,25 +3082,21 @@ function settingsSheet() {
     '<p class="grp">Detección</p>' +
     '<ul class="list"><li class="opt"><span>Sensibilidad</span><div class="seg wide" role="group" aria-label="Sensibilidad" data-seg="sens">' +
     '<button type="button" data-v="baja">Baja</button><button type="button" data-v="media">Media</button><button type="button" data-v="alta">Alta</button></div></li></ul>' +
-    '<p class="hint">Alta reconoce ronquidos más suaves, pero puede confundir otros sonidos graves. Baja cuenta solo los más claros.</p>' +
     '<button class="btn tonal block" type="button" data-act="test">Probar la detección</button>' +
     '<p class="grp">Grabaciones</p>' +
     '<ul class="list"><li class="kv"><span>Grabar los ronquidos</span><label class="sw"><input type="checkbox" data-cfg="audio"' + (cfg.audio ? ' checked' : '') + ' aria-label="Grabar los ronquidos"><span></span></label></li>' +
     '<li class="opt"><span>Conservar los audios de</span><div class="seg wide" role="group" aria-label="Conservar audios" data-seg="keep">' +
     '<button type="button" data-v="7">7 noches</button><button type="button" data-v="14">14 noches</button><button type="button" data-v="30">30 noches</button></div></li></ul>' +
-    '<p class="hint">Se guarda un trozo de hasta ' + CLIP_MAX_S + ' s de cada episodio (máximo ' + MAX_CLIPS + ' por noche). Las cifras y el gráfico de cada noche se guardan siempre.</p>' +
     '<p class="grp">La noche</p>' +
     '<ul class="list"><li class="opt"><span>Empezar a escuchar</span><div class="seg wide" role="group" aria-label="Empezar a escuchar" data-seg="delay">' +
     '<button type="button" data-v="0">De inmediato</button><button type="button" data-v="15">En 15 min</button><button type="button" data-v="30">En 30 min</button></div></li>' +
     '<li class="kv"><span>Terminar sola</span><label class="sw"><input type="checkbox" data-cfg="stopOn"' + (cfg.stopOn ? ' checked' : '') + ' aria-label="Terminar sola"><span></span></label></li>' +
     '<li class="kv" id="row-stop"' + (cfg.stopOn ? '' : ' hidden') + '><span>A las</span><input class="time" type="time" id="stop-at" value="' + cfg.stopAt + '"></li>' +
     '<li class="kv"><span>Terminar al detener la alarma</span><label class="sw"><input type="checkbox" data-cfg="endOnAlarm"' + (cfg.endOnAlarm ? ' checked' : '') + ' aria-label="Terminar al detener la alarma"><span></span></label></li></ul>' +
-    '<p class="hint">Mientras suena la alarma el micrófono queda en pausa. Si lo activas, al detenerla la noche se guarda y termina; al posponerla, la escucha sigue.</p>' +
     '<p class="grp">Datos</p>' +
     '<ul class="list"><li class="kv"><span>Noches guardadas</span><span>' + nights.length + '</span></li>' +
     '<li class="kv"><span>Grabaciones</span><span id="st-audio">…</span></li></ul>' +
-    '<button class="btn danger block" type="button" id="wipe">' + ICON.trash + 'Borrar todo</button>' +
-    '<p class="hint">Todo queda guardado solo en este iPhone.</p>'
+    '<button class="btn danger block" type="button" id="wipe">' + ICON.trash + 'Borrar todo</button>'
   );
   setSeg($('[data-seg="sens"]', sh.panel), cfg.sens);
   setSeg($('[data-seg="keep"]', sh.panel), String(cfg.keep));
