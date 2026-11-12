@@ -3221,7 +3221,7 @@ function cleanCfg(c) {
 }
 // Combina datos de otro dispositivo: gana la versión más reciente de cada noche; lo borrado en cualquier lado se borra en todos
 function mergeIn(p) {
-  var res = { added: 0, updated: 0, removed: 0, cfg: false }, jobs = [];
+  var res = { added: 0, updated: 0, removed: 0, cfg: false, ids: [], had: 0, wasDeleted: 0 }, jobs = [];
   var del = p && p.deleted && typeof p.deleted === 'object' ? p.deleted : {};
   Object.keys(del).forEach(function (id) { addTomb([id], del[id]); });
   return DB.all('nights').then(function (all) {
@@ -3234,11 +3234,13 @@ function mergeIn(p) {
     var inc = p && p.nights && typeof p.nights === 'object' ? p.nights : {};
     Object.keys(inc).forEach(function (id) {
       var n = cleanNight(inc[id]);
-      if (!n || n.id !== id || tomb[id]) return;
+      if (!n || n.id !== id) return;
+      if (tomb[id]) { res.wasDeleted++; return; }
       var l = local[id];
-      if (l && (l.live || (l.upd || 0) >= n.upd)) return;
+      if (l && (l.live || (l.upd || 0) >= n.upd)) { res.had++; return; }
       if (l) { n.clips = l.clips || []; if (l.cleared) n.cleared = l.cleared; if (l.remote) n.remote = true; res.updated++; }
       else { n.clips = []; n.remote = true; res.added++; }
+      res.ids.push(id);
       jobs.push(DB.put('nights', n));
     });
     return Promise.all(jobs);
@@ -3277,31 +3279,55 @@ function exportData() {
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
   });
 }
+// Safari en iPhone puede descartar un selector de archivo que no está en la página antes de entregar el archivo
+// elegido (entonces no pasa nada): por eso el selector queda dentro de la página y se reutiliza.
+var impInput = null;
 function importFile() {
-  var inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.json,application/json,text/plain';
-  inp.addEventListener('change', function () {
-    var f = inp.files && inp.files[0];
-    if (!f) return;
-    var fr = new FileReader();
-    fr.onload = function () {
-      var p = null;
-      try { p = JSON.parse(fr.result); } catch (e) {}
-      if (!p || p.app !== 'reposo-ronquidos' || !p.nights || typeof p.nights !== 'object') { toast('Archivo no válido.'); return; }
-      mergeIn(p).then(function (r) {
-        var t = [];
-        if (r.added) t.push(r.added + ' ' + plural(r.added, 'noche nueva', 'noches nuevas'));
-        if (r.updated) t.push(r.updated + ' ' + plural(r.updated, 'actualizada', 'actualizadas'));
-        if (r.removed) t.push(r.removed + ' ' + plural(r.removed, 'eliminada', 'eliminadas'));
-        if (r.cfg) t.push('ajustes');
-        toast(t.length ? 'Importado: ' + t.join(', ') + '.' : 'Sin cambios.');
-        render(); syncSoon();
-      }).catch(function () { toast('No se pudo importar.'); });
-    };
-    fr.onerror = function () { toast('No se pudo leer el archivo.'); };
-    fr.readAsText(f);
-  });
-  inp.click();
+  if (!impInput) {
+    impInput = document.createElement('input');
+    impInput.type = 'file';
+    impInput.accept = '.json,application/json,text/plain';
+    impInput.setAttribute('aria-hidden', 'true');
+    impInput.tabIndex = -1;
+    impInput.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+    document.body.appendChild(impInput);
+    impInput.addEventListener('change', function () {
+      var f = impInput.files && impInput.files[0];
+      if (f) readImport(f);
+    });
+  }
+  impInput.value = '';
+  impInput.click();
+}
+function readImport(f) {
+  var fr = new FileReader();
+  fr.onload = function () {
+    var p = null;
+    try { p = JSON.parse(String(fr.result || '').replace(/^﻿/, '')); } catch (e) {}
+    if (!p || p.app !== 'reposo-ronquidos' || !p.nights || typeof p.nights !== 'object') { toast('Ese archivo no es una exportación de Ronquidos.', 4500); return; }
+    mergeIn(p).then(function (r) {
+      return render().then(function () { return r; });
+    }).then(function (r) {
+      syncSoon();
+      if (r.ids.length) {
+        // abre la noche importada más reciente para que se vea de inmediato
+        var last = null;
+        nights.forEach(function (x) { if (r.ids.indexOf(x.id) >= 0 && (!last || x.start > last.start)) last = x; });
+        closeAllSheets();
+        if (last) nightSheet(last.id);
+        toast(r.ids.length === 1 && last ? 'Importada la noche del ' + dayLong(nightDay(last)) + ' (' + hm(last.start) + ' a ' + hm(last.end) + ').' : 'Importadas ' + r.ids.length + ' noches.', 4500);
+        return;
+      }
+      var t = [];
+      if (r.had) t.push(r.had === 1 ? 'Esa noche ya estaba en la app' : 'Esas noches ya estaban en la app');
+      if (r.wasDeleted) t.push(r.wasDeleted === 1 ? 'esa noche se había borrado en este dispositivo' : r.wasDeleted + ' noches se habían borrado en este dispositivo');
+      if (r.removed) t.push(r.removed + ' ' + plural(r.removed, 'noche eliminada', 'noches eliminadas'));
+      if (r.cfg) t.push('ajustes actualizados');
+      toast(t.length ? cap(t.join('; ')) + '.' : 'El archivo no trae noches.', 5000);
+    }).catch(function () { toast('No se pudo importar.'); });
+  };
+  fr.onerror = function () { toast('No se pudo leer el archivo. Si está en iCloud, ábrelo antes en Archivos para que se descargue.', 6000); };
+  fr.readAsText(f);
 }
 
 // ── GitHub ──
